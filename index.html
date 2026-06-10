@@ -641,10 +641,10 @@
 
       const textureSets = {
         board: { map: makeTexture({ base: 0x332316, noise: 42, vein: 16 }), bump: makeBumpTexture(42) },
-        P: { map: makeTexture({ base: 0x60764a, noise: 34, vein: 10, grid: true }), bump: makeBumpTexture(38) },
-        F: { map: makeTexture({ base: 0x2d5f43, noise: 42, vein: 12, grid: true }), bump: makeBumpTexture(48) },
-        M: { map: makeTexture({ base: 0x777b78, noise: 54, vein: 34, grid: true }), bump: makeBumpTexture(62) },
-        R: { map: makeTexture({ base: 0x2f7f91, noise: 20, vein: 6, water: true, grid: true }), bump: makeBumpTexture(20) },
+        P: { map: makeTexture({ base: 0x6f8a50, noise: 40, vein: 14, grid: true }), bump: makeBumpTexture(42) },
+        F: { map: makeTexture({ base: 0x2d6643, noise: 46, vein: 14, grid: true }), bump: makeBumpTexture(50) },
+        M: { map: makeTexture({ base: 0x8a7b68, noise: 62, vein: 42, grid: true }), bump: makeBumpTexture(70) },
+        R: { map: makeTexture({ base: 0x47715f, noise: 34, vein: 18, grid: true }), bump: makeBumpTexture(38) },
       };
 
       const materials = {
@@ -659,7 +659,11 @@
         trunk: new THREE.MeshStandardMaterial({ color: 0xffffff, map: makeTexture({ base: 0x7b4a2b, noise: 28, vein: 18 }), bumpMap: makeBumpTexture(36), bumpScale: 0.025, roughness: 0.68 }),
         leaves: new THREE.MeshStandardMaterial({ color: 0xffffff, map: makeTexture({ base: 0x248048, noise: 50, vein: 8 }), bumpMap: makeBumpTexture(44), bumpScale: 0.025, roughness: 0.62 }),
         rock: new THREE.MeshStandardMaterial({ color: 0xffffff, map: textureSets.M.map, bumpMap: textureSets.M.bump, bumpScale: 0.08, roughness: 0.74 }),
-        river: new THREE.MeshStandardMaterial({ color: 0xffffff, map: textureSets.R.map, bumpMap: textureSets.R.bump, bumpScale: 0.025, roughness: 0.18, metalness: 0.04, transparent: true, opacity: 0.9 }),
+        river: new THREE.MeshStandardMaterial({ color: 0x8fe0f2, map: makeTexture({ base: 0x4bb2c9, noise: 18, vein: 10, water: true }), bumpMap: makeBumpTexture(18), bumpScale: 0.018, roughness: 0.12, metalness: 0.08, transparent: true, opacity: 0.9 }),
+        bank: new THREE.MeshStandardMaterial({ color: 0xffffff, map: makeTexture({ base: 0xb09a70, noise: 48, vein: 16 }), bumpMap: makeBumpTexture(44), bumpScale: 0.035, roughness: 0.76 }),
+        grass: new THREE.MeshStandardMaterial({ color: 0x7aa84f, roughness: 0.72 }),
+        snow: new THREE.MeshStandardMaterial({ color: 0xe7e2d2, roughness: 0.54 }),
+        pebble: new THREE.MeshStandardMaterial({ color: 0x6d665b, roughness: 0.82 }),
         wall: new THREE.MeshStandardMaterial({ color: 0xffffff, map: makeTexture({ base: 0x9e554a, noise: 30, vein: 14 }), bumpMap: makeBumpTexture(42), bumpScale: 0.035, roughness: 0.62 }),
       };
 
@@ -786,9 +790,10 @@
             scene.add(tile);
             tileMeshes.push(tile);
 
+            if (code === "P") addPlainsDetail(pos, spec.height, x, y);
             if (code === "F") addTrees(pos, spec.height);
             if (code === "M") addMountain(pos, spec.height);
-            if (code === "R") addRiver(pos, spec.height);
+            if (code === "R") addRiver(pos, spec.height, x, y);
 
             const fog = new THREE.Mesh(new THREE.BoxGeometry(1.02, 0.06, 1.02), materials.fog);
             fog.position.set(pos.x, spec.height + 0.12, pos.z);
@@ -796,6 +801,20 @@
             scene.add(fog);
             fogMeshes.set(key(x, y), fog);
           }
+        }
+      }
+
+      function addPlainsDetail(pos, baseHeight, x, y) {
+        const count = isMobileRender ? 2 : 4;
+        for (let i = 0; i < count; i += 1) {
+          const seed = (x * 13 + y * 17 + i * 7);
+          const ox = ((Math.sin(seed) + 1) * 0.5 - 0.5) * 0.62;
+          const oz = ((Math.cos(seed * 1.7) + 1) * 0.5 - 0.5) * 0.62;
+          const tuft = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.16, 5), materials.grass);
+          tuft.position.set(pos.x + ox, baseHeight + 0.1, pos.z + oz);
+          tuft.rotation.y = seed;
+          tuft.castShadow = true;
+          scene.add(tuft);
         }
       }
 
@@ -819,20 +838,98 @@
       }
 
       function addMountain(pos, baseHeight) {
-        const peak = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.72, 7), materials.rock);
-        peak.position.set(pos.x - 0.08, baseHeight + 0.36, pos.z - 0.03);
-        peak.castShadow = true;
-        scene.add(peak);
+        const peaks = [
+          { x: -0.18, z: -0.06, width: 0.42, depth: 0.32, height: 0.82, cap: 0.18 },
+          { x: 0.15, z: 0.12, width: 0.34, depth: 0.28, height: 0.64, cap: 0.14 },
+          { x: 0.2, z: -0.22, width: 0.26, depth: 0.22, height: 0.45, cap: 0 },
+        ];
+        peaks.forEach((peakSpec, index) => {
+          const crag = new THREE.Mesh(
+            new THREE.DodecahedronGeometry(0.5, 0),
+            materials.rock,
+          );
+          crag.scale.set(peakSpec.width, peakSpec.height, peakSpec.depth);
+          crag.position.set(pos.x + peakSpec.x, baseHeight + peakSpec.height * 0.5, pos.z + peakSpec.z);
+          crag.rotation.set(-0.08 + index * 0.13, index * 0.72, 0.18 - index * 0.08);
+          crag.castShadow = true;
+          crag.receiveShadow = true;
+          scene.add(crag);
+
+          if (peakSpec.cap) {
+            const cap = new THREE.Mesh(
+              new THREE.TetrahedronGeometry(0.34, 0),
+              materials.snow,
+            );
+            cap.scale.set(peakSpec.width * 0.78, peakSpec.cap, peakSpec.depth * 0.78);
+            cap.position.set(pos.x + peakSpec.x, baseHeight + peakSpec.height * 0.93, pos.z + peakSpec.z);
+            cap.rotation.copy(crag.rotation);
+            cap.castShadow = true;
+            scene.add(cap);
+          }
+        });
+
+        const boulderCount = isMobileRender ? 3 : 6;
+        for (let i = 0; i < boulderCount; i += 1) {
+          const angle = i * 1.3;
+          const boulder = new THREE.Mesh(new THREE.DodecahedronGeometry(0.055 + (i % 2) * 0.025, 0), materials.pebble);
+          boulder.position.set(pos.x + Math.cos(angle) * 0.34, baseHeight + 0.08, pos.z + Math.sin(angle) * 0.3);
+          boulder.rotation.set(i * 0.3, angle, i * 0.2);
+          boulder.castShadow = true;
+          scene.add(boulder);
+        }
       }
 
-      function addRiver(pos, baseHeight) {
-        const stream = new THREE.Mesh(
-          new THREE.PlaneGeometry(0.86, 0.28),
-          materials.river,
-        );
+      function makeRiverStrip(width, length) {
+        const shape = new THREE.Shape();
+        shape.moveTo(-length / 2, -width * 0.42);
+        shape.lineTo(-length * 0.18, -width * 0.55);
+        shape.lineTo(length * 0.14, -width * 0.36);
+        shape.lineTo(length / 2, -width * 0.47);
+        shape.lineTo(length / 2, width * 0.43);
+        shape.lineTo(length * 0.16, width * 0.54);
+        shape.lineTo(-length * 0.2, width * 0.38);
+        shape.lineTo(-length / 2, width * 0.5);
+        shape.closePath();
+        return new THREE.ShapeGeometry(shape);
+      }
+
+      function addRiver(pos, baseHeight, x, y) {
+        const horizontal = (inBounds(x - 1, y) && layout[y][x - 1] === "R") || (inBounds(x + 1, y) && layout[y][x + 1] === "R");
+        const rotation = horizontal ? 0 : Math.PI / 2;
+
+        const channel = new THREE.Mesh(makeRiverStrip(0.48, 0.98), materials.bank);
+        channel.rotation.x = -Math.PI / 2;
+        channel.rotation.z = rotation;
+        channel.position.set(pos.x, baseHeight + 0.096, pos.z);
+        channel.castShadow = true;
+        channel.receiveShadow = true;
+        scene.add(channel);
+
+        const stream = new THREE.Mesh(makeRiverStrip(0.28, 0.94), materials.river);
         stream.rotation.x = -Math.PI / 2;
-        stream.position.set(pos.x, baseHeight + 0.043, pos.z);
+        stream.rotation.z = rotation;
+        stream.position.set(pos.x, baseHeight + 0.126, pos.z);
         scene.add(stream);
+
+        [-0.18, 0.18].forEach((offset, index) => {
+          const pebble = new THREE.Mesh(new THREE.DodecahedronGeometry(0.045, 0), materials.pebble);
+          const along = index ? 0.3 : -0.32;
+          const px = horizontal ? pos.x + along : pos.x + offset;
+          const pz = horizontal ? pos.z + offset : pos.z + along;
+          pebble.position.set(px, baseHeight + 0.145, pz);
+          pebble.rotation.set(index * 0.3, along, 0.2);
+          pebble.castShadow = true;
+          scene.add(pebble);
+        });
+
+        const foam = new THREE.Mesh(
+          new THREE.PlaneGeometry(0.45, 0.018),
+          new THREE.MeshBasicMaterial({ color: 0xd7fbff, transparent: true, opacity: 0.5, side: THREE.DoubleSide }),
+        );
+        foam.rotation.x = -Math.PI / 2;
+        foam.rotation.z = rotation + 0.08;
+        foam.position.set(pos.x, baseHeight + 0.13, pos.z);
+        scene.add(foam);
       }
 
       function createArmyPiece() {
