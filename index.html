@@ -460,13 +460,16 @@
       ];
 
       const scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x101311);
-      scene.fog = new THREE.Fog(0x101311, 11, 25);
+      scene.background = new THREE.Color(0x0e1110);
+      scene.fog = new THREE.Fog(0x0e1110, 20, 42);
 
       const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.5));
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.42;
 
       const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
       const cameraTarget = new THREE.Vector3(0, 0, 0);
@@ -488,15 +491,106 @@
       let dragStart = null;
       let didDrag = false;
 
+      function makeTexture({ base, noise = 32, vein = 0, water = false, grid = false }) {
+        const size = 512;
+        const canvasTexture = document.createElement("canvas");
+        canvasTexture.width = size;
+        canvasTexture.height = size;
+        const ctx = canvasTexture.getContext("2d");
+        const color = new THREE.Color(base);
+        const data = ctx.createImageData(size, size);
+        for (let y = 0; y < size; y += 1) {
+          for (let x = 0; x < size; x += 1) {
+            const i = (y * size + x) * 4;
+            const wave = Math.sin((x * 0.055) + (y * 0.018)) * vein;
+            const grain = (Math.random() - 0.5) * noise;
+            const stripe = water ? Math.sin((x + y) * 0.07) * 18 : 0;
+            const edge = grid && (x < 14 || y < 14 || x > size - 15 || y > size - 15) ? -34 : 0;
+            data.data[i] = THREE.MathUtils.clamp(color.r * 255 + grain + wave + stripe + edge, 0, 255);
+            data.data[i + 1] = THREE.MathUtils.clamp(color.g * 255 + grain + wave * 0.65 + stripe + edge, 0, 255);
+            data.data[i + 2] = THREE.MathUtils.clamp(color.b * 255 + grain + wave * 0.4 + stripe * 1.2 + edge, 0, 255);
+            data.data[i + 3] = 255;
+          }
+        }
+        ctx.putImageData(data, 0, 0);
+
+        if (!water) {
+          ctx.globalAlpha = 0.18;
+          ctx.strokeStyle = "#f3ead7";
+          for (let i = 0; i < 35; i += 1) {
+            ctx.beginPath();
+            const start = Math.random() * size;
+            ctx.moveTo(start, Math.random() * size);
+            ctx.bezierCurveTo(
+              start + (Math.random() - 0.5) * 160,
+              Math.random() * size,
+              Math.random() * size,
+              Math.random() * size,
+              Math.random() * size,
+              Math.random() * size,
+            );
+            ctx.stroke();
+          }
+          ctx.globalAlpha = 1;
+        }
+
+        const texture = new THREE.CanvasTexture(canvasTexture);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(1, 1);
+        texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        texture.needsUpdate = true;
+        return texture;
+      }
+
+      function makeBumpTexture(strength = 44) {
+        const size = 512;
+        const canvasTexture = document.createElement("canvas");
+        canvasTexture.width = size;
+        canvasTexture.height = size;
+        const ctx = canvasTexture.getContext("2d");
+        const data = ctx.createImageData(size, size);
+        for (let y = 0; y < size; y += 1) {
+          for (let x = 0; x < size; x += 1) {
+            const i = (y * size + x) * 4;
+            const value = 128 + (Math.random() - 0.5) * strength + Math.sin(x * 0.04 + y * 0.03) * 18;
+            data.data[i] = value;
+            data.data[i + 1] = value;
+            data.data[i + 2] = value;
+            data.data[i + 3] = 255;
+          }
+        }
+        ctx.putImageData(data, 0, 0);
+        const texture = new THREE.CanvasTexture(canvasTexture);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        return texture;
+      }
+
+      const textureSets = {
+        board: { map: makeTexture({ base: 0x332316, noise: 42, vein: 16 }), bump: makeBumpTexture(42) },
+        P: { map: makeTexture({ base: 0x60764a, noise: 34, vein: 10, grid: true }), bump: makeBumpTexture(38) },
+        F: { map: makeTexture({ base: 0x2d5f43, noise: 42, vein: 12, grid: true }), bump: makeBumpTexture(48) },
+        M: { map: makeTexture({ base: 0x777b78, noise: 54, vein: 34, grid: true }), bump: makeBumpTexture(62) },
+        R: { map: makeTexture({ base: 0x2f7f91, noise: 20, vein: 6, water: true, grid: true }), bump: makeBumpTexture(20) },
+      };
+
       const materials = {
-        board: new THREE.MeshStandardMaterial({ color: 0x211a13, roughness: 0.72, metalness: 0.05 }),
-        edge: new THREE.MeshStandardMaterial({ color: 0x5b4229, roughness: 0.8 }),
-        fog: new THREE.MeshStandardMaterial({ color: 0xd8d1bf, transparent: true, opacity: 0.22, roughness: 0.9, depthWrite: false }),
+        board: new THREE.MeshStandardMaterial({ color: 0xffffff, map: textureSets.board.map, bumpMap: textureSets.board.bump, bumpScale: 0.055, roughness: 0.56, metalness: 0.03 }),
+        edge: new THREE.MeshStandardMaterial({ color: 0xffffff, map: textureSets.board.map, bumpMap: textureSets.board.bump, bumpScale: 0.04, roughness: 0.6 }),
+        fog: new THREE.MeshStandardMaterial({ color: 0xe3decf, transparent: true, opacity: 0.14, roughness: 1, depthWrite: false }),
         highlight: new THREE.MeshStandardMaterial({ color: 0xd8b45c, emissive: 0x5a4210, transparent: true, opacity: 0.5, depthWrite: false }),
-        army: new THREE.MeshStandardMaterial({ color: 0xd8b45c, roughness: 0.45 }),
-        enemy: new THREE.MeshStandardMaterial({ color: 0xb95747, roughness: 0.52 }),
-        blue: new THREE.MeshStandardMaterial({ color: 0x6ea4b8, roughness: 0.45 }),
-        dark: new THREE.MeshStandardMaterial({ color: 0x171713, roughness: 0.65 }),
+        army: new THREE.MeshStandardMaterial({ color: 0xe1b94e, roughness: 0.32, metalness: 0.18 }),
+        enemy: new THREE.MeshStandardMaterial({ color: 0xb95747, roughness: 0.42, metalness: 0.08 }),
+        blue: new THREE.MeshStandardMaterial({ color: 0x6ea4b8, roughness: 0.3, metalness: 0.12 }),
+        dark: new THREE.MeshStandardMaterial({ color: 0x1c1812, roughness: 0.54 }),
+        trunk: new THREE.MeshStandardMaterial({ color: 0xffffff, map: makeTexture({ base: 0x7b4a2b, noise: 28, vein: 18 }), bumpMap: makeBumpTexture(36), bumpScale: 0.025, roughness: 0.68 }),
+        leaves: new THREE.MeshStandardMaterial({ color: 0xffffff, map: makeTexture({ base: 0x248048, noise: 50, vein: 8 }), bumpMap: makeBumpTexture(44), bumpScale: 0.025, roughness: 0.62 }),
+        rock: new THREE.MeshStandardMaterial({ color: 0xffffff, map: textureSets.M.map, bumpMap: textureSets.M.bump, bumpScale: 0.08, roughness: 0.74 }),
+        river: new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: textureSets.R.map, bumpMap: textureSets.R.bump, bumpScale: 0.025, roughness: 0.15, metalness: 0.02, transmission: 0.12, transparent: true, opacity: 0.9 }),
+        wall: new THREE.MeshStandardMaterial({ color: 0xffffff, map: makeTexture({ base: 0x9e554a, noise: 30, vein: 14 }), bumpMap: makeBumpTexture(42), bumpScale: 0.035, roughness: 0.62 }),
       };
 
       function initialState() {
@@ -557,12 +651,12 @@
       }
 
       function addLights() {
-        scene.add(new THREE.HemisphereLight(0xf3ead7, 0x18211d, 1.45));
+        scene.add(new THREE.HemisphereLight(0xfff0d2, 0x25362d, 1.42));
 
-        const keyLight = new THREE.DirectionalLight(0xf8dfad, 2.4);
-        keyLight.position.set(-4.5, 9, 5);
+        const keyLight = new THREE.DirectionalLight(0xffdf9e, 4.4);
+        keyLight.position.set(-5.4, 10.5, 4.6);
         keyLight.castShadow = true;
-        keyLight.shadow.mapSize.set(2048, 2048);
+        keyLight.shadow.mapSize.set(4096, 4096);
         keyLight.shadow.camera.near = 1;
         keyLight.shadow.camera.far = 25;
         keyLight.shadow.camera.left = -9;
@@ -571,12 +665,17 @@
         keyLight.shadow.camera.bottom = -9;
         scene.add(keyLight);
 
-        const rim = new THREE.DirectionalLight(0x6ea4b8, 0.7);
+        const fill = new THREE.DirectionalLight(0xffedc7, 0.82);
+        fill.position.set(4, 5, -5);
+        scene.add(fill);
+
+        const rim = new THREE.DirectionalLight(0x8fcfe3, 1.0);
         rim.position.set(6, 5, -8);
         scene.add(rim);
       }
 
       function createBoard() {
+        const tileGeometry = new THREE.BoxGeometry(1.04, 1, 1.04, 3, 1, 3);
         const base = new THREE.Mesh(
           new THREE.BoxGeometry(9.2, 0.36, 9.2),
           materials.board,
@@ -598,12 +697,17 @@
             const code = layout[y][x];
             const spec = terrain[code];
             const pos = worldForTile(x, y);
+            const textureSet = textureSets[code];
             const material = new THREE.MeshStandardMaterial({
-              color: spec.color,
-              roughness: code === "R" ? 0.32 : 0.72,
-              metalness: code === "R" ? 0.05 : 0,
+              color: 0xffffff,
+              map: textureSet.map,
+              bumpMap: textureSet.bump,
+              bumpScale: code === "M" ? 0.08 : code === "R" ? 0.018 : 0.035,
+              roughness: code === "R" ? 0.22 : code === "M" ? 0.78 : 0.62,
+              metalness: code === "R" ? 0.04 : 0,
             });
-            const tile = new THREE.Mesh(new THREE.BoxGeometry(1.04, spec.height, 1.04), material);
+            const tile = new THREE.Mesh(tileGeometry.clone(), material);
+            tile.scale.y = spec.height;
             tile.position.set(pos.x, spec.height / 2, pos.z);
             tile.castShadow = true;
             tile.receiveShadow = true;
@@ -625,20 +729,18 @@
       }
 
       function addTrees(pos, baseHeight) {
-        const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5a3b25, roughness: 0.8 });
-        const leafMat = new THREE.MeshStandardMaterial({ color: 0x1c5a35, roughness: 0.7 });
         const offsets = [
           [-0.25, -0.2],
           [0.22, -0.16],
           [0.02, 0.22],
         ];
         offsets.forEach(([ox, oz], index) => {
-          const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.22, 6), trunkMat);
+          const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.22, 8), materials.trunk);
           trunk.position.set(pos.x + ox, baseHeight + 0.12, pos.z + oz);
           trunk.castShadow = true;
           scene.add(trunk);
 
-          const leaves = new THREE.Mesh(new THREE.ConeGeometry(0.16 + index * 0.02, 0.45, 7), leafMat);
+          const leaves = new THREE.Mesh(new THREE.ConeGeometry(0.16 + index * 0.02, 0.45, 9), materials.leaves);
           leaves.position.set(pos.x + ox, baseHeight + 0.42, pos.z + oz);
           leaves.castShadow = true;
           scene.add(leaves);
@@ -646,8 +748,7 @@
       }
 
       function addMountain(pos, baseHeight) {
-        const rockMat = new THREE.MeshStandardMaterial({ color: 0x747878, roughness: 0.86 });
-        const peak = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.72, 5), rockMat);
+        const peak = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.72, 7), materials.rock);
         peak.position.set(pos.x - 0.08, baseHeight + 0.36, pos.z - 0.03);
         peak.castShadow = true;
         scene.add(peak);
@@ -656,7 +757,7 @@
       function addRiver(pos, baseHeight) {
         const stream = new THREE.Mesh(
           new THREE.PlaneGeometry(0.86, 0.28),
-          new THREE.MeshStandardMaterial({ color: 0x79bfd1, roughness: 0.2, metalness: 0.15, transparent: true, opacity: 0.72 }),
+          materials.river,
         );
         stream.rotation.x = -Math.PI / 2;
         stream.position.set(pos.x, baseHeight + 0.043, pos.z);
@@ -699,14 +800,13 @@
 
       function createStronghold() {
         const group = new THREE.Group();
-        const wallMat = new THREE.MeshStandardMaterial({ color: 0x7d3f3a, roughness: 0.74 });
-        const keep = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.52, 0.42), wallMat);
+        const keep = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.52, 0.42), materials.wall);
         keep.position.y = 0.28;
         keep.castShadow = true;
         group.add(keep);
         [-0.28, 0.28].forEach((x) => {
           [-0.28, 0.28].forEach((z) => {
-            const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.62, 8), wallMat);
+            const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.62, 10), materials.wall);
             tower.position.set(x, 0.31, z);
             tower.castShadow = true;
             group.add(tower);
