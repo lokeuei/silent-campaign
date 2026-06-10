@@ -464,16 +464,19 @@
       scene.fog = new THREE.Fog(0x0e1110, 20, 42);
 
       const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.5));
+      const isMobileRender = window.matchMedia("(max-width: 760px), (pointer: coarse)").matches;
+      const textureSize = isMobileRender ? 256 : 512;
+      const environmentSize = isMobileRender ? 512 : 1024;
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobileRender ? 1.35 : 2));
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.42;
+      renderer.toneMappingExposure = isMobileRender ? 1.28 : 1.42;
 
       function createFallbackEnvironment() {
-        const width = 1024;
-        const height = 512;
+        const width = environmentSize;
+        const height = environmentSize / 2;
         const skyCanvas = document.createElement("canvas");
         skyCanvas.width = width;
         skyCanvas.height = height;
@@ -522,6 +525,10 @@
       }
 
       function loadHDRIBackdrop() {
+        if (isMobileRender) {
+          applyEnvironment(createFallbackEnvironment());
+          return;
+        }
         new THREE.TextureLoader()
           .load(
             "https://dl.polyhaven.org/file/ph-assets/HDRIs/extra/Tonemapped%20JPG/kiara_1_dawn.jpg",
@@ -555,7 +562,7 @@
       let didDrag = false;
 
       function makeTexture({ base, noise = 32, vein = 0, water = false, grid = false }) {
-        const size = 512;
+        const size = textureSize;
         const canvasTexture = document.createElement("canvas");
         canvasTexture.width = size;
         canvasTexture.height = size;
@@ -608,7 +615,7 @@
       }
 
       function makeBumpTexture(strength = 44) {
-        const size = 512;
+        const size = textureSize;
         const canvasTexture = document.createElement("canvas");
         canvasTexture.width = size;
         canvasTexture.height = size;
@@ -652,7 +659,7 @@
         trunk: new THREE.MeshStandardMaterial({ color: 0xffffff, map: makeTexture({ base: 0x7b4a2b, noise: 28, vein: 18 }), bumpMap: makeBumpTexture(36), bumpScale: 0.025, roughness: 0.68 }),
         leaves: new THREE.MeshStandardMaterial({ color: 0xffffff, map: makeTexture({ base: 0x248048, noise: 50, vein: 8 }), bumpMap: makeBumpTexture(44), bumpScale: 0.025, roughness: 0.62 }),
         rock: new THREE.MeshStandardMaterial({ color: 0xffffff, map: textureSets.M.map, bumpMap: textureSets.M.bump, bumpScale: 0.08, roughness: 0.74 }),
-        river: new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: textureSets.R.map, bumpMap: textureSets.R.bump, bumpScale: 0.025, roughness: 0.15, metalness: 0.02, transmission: 0.12, transparent: true, opacity: 0.9 }),
+        river: new THREE.MeshStandardMaterial({ color: 0xffffff, map: textureSets.R.map, bumpMap: textureSets.R.bump, bumpScale: 0.025, roughness: 0.18, metalness: 0.04, transparent: true, opacity: 0.9 }),
         wall: new THREE.MeshStandardMaterial({ color: 0xffffff, map: makeTexture({ base: 0x9e554a, noise: 30, vein: 14 }), bumpMap: makeBumpTexture(42), bumpScale: 0.035, roughness: 0.62 }),
       };
 
@@ -719,7 +726,8 @@
         const keyLight = new THREE.DirectionalLight(0xffdf9e, 4.4);
         keyLight.position.set(-5.4, 10.5, 4.6);
         keyLight.castShadow = true;
-        keyLight.shadow.mapSize.set(4096, 4096);
+        const shadowSize = isMobileRender ? 1024 : 2048;
+        keyLight.shadow.mapSize.set(shadowSize, shadowSize);
         keyLight.shadow.camera.near = 1;
         keyLight.shadow.camera.far = 25;
         keyLight.shadow.camera.left = -9;
