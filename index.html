@@ -1,0 +1,819 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#151816" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Silent Campaign" />
+    <title>Silent Campaign</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --ink: #f4f0e6;
+        --muted: #b8b0a2;
+        --line: #4a514b;
+        --gold: #d8b45c;
+        --red: #b95747;
+        --blue: #6ea4b8;
+        --panel: rgba(25, 29, 27, 0.94);
+      }
+
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100svh;
+        background:
+          radial-gradient(circle at 12% 8%, rgba(216, 180, 92, 0.18), transparent 28%),
+          linear-gradient(135deg, #101311 0%, #222820 46%, #161817 100%);
+        color: var(--ink);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      button {
+        min-height: 42px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #303631;
+        color: var(--ink);
+        cursor: pointer;
+        font: inherit;
+        font-weight: 750;
+        touch-action: manipulation;
+      }
+
+      button:active {
+        transform: translateY(1px);
+      }
+
+      .shell {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 340px;
+        gap: 14px;
+        min-height: 100svh;
+        padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+      }
+
+      .war-table,
+      .command {
+        border: 1px solid rgba(216, 180, 92, 0.28);
+        background: rgba(19, 23, 21, 0.9);
+        box-shadow: 0 18px 56px rgba(0, 0, 0, 0.34);
+      }
+
+      .war-table {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        padding: 16px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: start;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+
+      .eyebrow {
+        margin: 0 0 4px;
+        color: var(--gold);
+        font-size: 0.74rem;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      p {
+        margin-top: 0;
+      }
+
+      h1 {
+        margin-bottom: 0;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: clamp(2rem, 8vw, 4rem);
+        line-height: 0.96;
+      }
+
+      h2 {
+        margin-bottom: 8px;
+        font-size: 1rem;
+      }
+
+      .scoreboard {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(62px, 1fr));
+        gap: 7px;
+        min-width: min(430px, 100%);
+      }
+
+      .scoreboard div {
+        border: 1px solid var(--line);
+        background: rgba(12, 15, 14, 0.7);
+        padding: 8px;
+      }
+
+      .scoreboard span {
+        display: block;
+        color: var(--muted);
+        font-size: 0.7rem;
+      }
+
+      .scoreboard strong {
+        display: block;
+        margin-top: 2px;
+        font-size: 1.25rem;
+      }
+
+      .map-wrap {
+        display: grid;
+        flex: 1;
+        place-items: center;
+        padding: 10px;
+        border: 1px solid var(--line);
+        background:
+          linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+          rgba(10, 13, 12, 0.72);
+        background-size: 24px 24px;
+      }
+
+      .map {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(36px, 1fr));
+        grid-template-rows: repeat(7, minmax(36px, 1fr));
+        gap: 5px;
+        width: min(100%, 620px, max(310px, calc(100svh - 230px)));
+        aspect-ratio: 1;
+      }
+
+      .tile {
+        position: relative;
+        display: grid;
+        min-width: 0;
+        place-items: center;
+        border-radius: 4px;
+        border: 1px solid rgba(244, 240, 230, 0.16);
+        color: var(--ink);
+      }
+
+      .tile.plains { background: #4f6746; }
+      .tile.forest { background: #244a39; }
+      .tile.mountain { background: #5b5f5f; }
+      .tile.river { background: #2d6676; }
+      .tile.fog { filter: saturate(0.35) brightness(0.52); }
+      .tile.selected { box-shadow: inset 0 0 0 3px var(--gold); }
+      .tile.reachable { border-color: rgba(216, 180, 92, 0.94); }
+
+      .unit,
+      .foe,
+      .goal,
+      .intel {
+        display: grid;
+        place-items: center;
+        width: 48%;
+        min-width: 23px;
+        aspect-ratio: 1;
+        border-radius: 50%;
+        font-size: 0.95rem;
+        font-weight: 900;
+      }
+
+      .unit {
+        background: var(--gold);
+        color: #171713;
+      }
+
+      .foe {
+        background: var(--red);
+      }
+
+      .goal {
+        width: 58%;
+        border-radius: 4px;
+        background: #7d3f3a;
+      }
+
+      .intel {
+        background: var(--blue);
+        color: #081113;
+      }
+
+      .terrain-cost {
+        position: absolute;
+        right: 4px;
+        bottom: 2px;
+        color: rgba(255, 255, 255, 0.65);
+        font-size: 0.68rem;
+        font-weight: 800;
+      }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 9px;
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 0.78rem;
+      }
+
+      .legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .swatch,
+      .marker {
+        display: inline-block;
+        width: 13px;
+        height: 13px;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+      }
+
+      .swatch.plains { background: #4f6746; }
+      .swatch.forest { background: #244a39; }
+      .swatch.mountain { background: #5b5f5f; }
+      .swatch.river { background: #2d6676; }
+      .marker { border-radius: 50%; }
+      .marker.scout { background: var(--blue); }
+      .marker.stronghold { border-radius: 3px; background: #7d3f3a; }
+
+      .command {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 10px;
+        overflow: auto;
+      }
+
+      .panel {
+        border: 1px solid var(--line);
+        background: var(--panel);
+        padding: 12px;
+      }
+
+      .panel p {
+        margin-bottom: 0;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+
+      .orders {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+      }
+
+      .orders button.active,
+      .result button {
+        background: var(--gold);
+        color: #15150f;
+      }
+
+      .hint {
+        min-height: 38px;
+        margin: 9px 0 0;
+        font-size: 0.88rem;
+      }
+
+      .principle {
+        border-color: rgba(216, 180, 92, 0.56);
+      }
+
+      .log {
+        display: flex;
+        flex-direction: column-reverse;
+        gap: 8px;
+        max-height: 190px;
+        margin: 0;
+        padding-left: 20px;
+        color: var(--muted);
+        line-height: 1.34;
+      }
+
+      .log li:last-child {
+        color: var(--ink);
+      }
+
+      .reset {
+        width: 100%;
+        margin-top: auto;
+        background: #3a2f2d;
+      }
+
+      dialog {
+        width: min(420px, calc(100vw - 28px));
+        border: 1px solid var(--gold);
+        border-radius: 8px;
+        background: #1f2423;
+        color: var(--ink);
+        padding: 0;
+      }
+
+      dialog::backdrop {
+        background: rgba(0, 0, 0, 0.68);
+      }
+
+      .result {
+        padding: 20px;
+      }
+
+      .result p {
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .result button {
+        width: 100%;
+      }
+
+      @media (max-width: 920px) {
+        .shell {
+          grid-template-columns: 1fr;
+        }
+
+        .command {
+          overflow: visible;
+        }
+      }
+
+      @media (max-width: 680px) {
+        .shell {
+          gap: 10px;
+        }
+
+        .war-table {
+          padding: 10px;
+        }
+
+        .topbar {
+          display: block;
+        }
+
+        .scoreboard {
+          grid-template-columns: repeat(4, 1fr);
+          margin-top: 10px;
+        }
+
+        .map-wrap {
+          padding: 7px;
+        }
+
+        .map {
+          width: min(100%, calc(100svw - 38px));
+          gap: 4px;
+        }
+
+        .legend {
+          font-size: 0.74rem;
+        }
+      }
+
+      @media (max-width: 390px) {
+        .scoreboard {
+          grid-template-columns: repeat(2, 1fr);
+        }
+
+        .orders {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="war-table" aria-label="Game board">
+        <div class="topbar">
+          <div>
+            <p class="eyebrow">Sun Tzu inspired strategy</p>
+            <h1>Silent Campaign</h1>
+          </div>
+          <div class="scoreboard" aria-label="Campaign state">
+            <div><span>Day</span><strong id="dayValue">1</strong></div>
+            <div><span>Supplies</span><strong id="supplyValue">18</strong></div>
+            <div><span>Morale</span><strong id="moraleValue">8</strong></div>
+            <div><span>Intel</span><strong id="intelValue">2</strong></div>
+          </div>
+        </div>
+
+        <div class="map-wrap">
+          <div id="map" class="map" role="grid" aria-label="Campaign map"></div>
+        </div>
+
+        <div class="legend" aria-label="Map legend">
+          <span><i class="swatch plains"></i> Plains</span>
+          <span><i class="swatch forest"></i> Forest</span>
+          <span><i class="swatch mountain"></i> Pass</span>
+          <span><i class="swatch river"></i> River</span>
+          <span><i class="marker scout"></i> Scout</span>
+          <span><i class="marker stronghold"></i> Stronghold</span>
+        </div>
+      </section>
+
+      <aside class="command" aria-label="Command panel">
+        <section class="panel">
+          <h2>Objective</h2>
+          <p>Capture the enemy stronghold before your army is exhausted. Study the terrain, scout uncertain ground, and win without wasteful battles.</p>
+        </section>
+
+        <section class="panel">
+          <h2>Orders</h2>
+          <div class="orders">
+            <button id="moveBtn" class="active" type="button">Advance</button>
+            <button id="scoutBtn" type="button">Scout</button>
+            <button id="feintBtn" type="button">Feint</button>
+            <button id="restBtn" type="button">Recover</button>
+          </div>
+          <p id="orderHint" class="hint">Choose an adjacent tile to advance.</p>
+        </section>
+
+        <section class="panel principle">
+          <h2 id="principleTitle">Laying Plans</h2>
+          <p id="principleText">Every move spends supplies. Avoid direct attacks when preparation or terrain can do the work.</p>
+        </section>
+
+        <section class="panel">
+          <h2>Dispatches</h2>
+          <ol id="log" class="log"></ol>
+        </section>
+
+        <button id="resetBtn" class="reset" type="button">Restart Campaign</button>
+      </aside>
+    </main>
+
+    <dialog id="resultDialog">
+      <div class="result">
+        <h2 id="resultTitle">Victory</h2>
+        <p id="resultText"></p>
+        <button id="dialogResetBtn" type="button">Play Again</button>
+      </div>
+    </dialog>
+
+    <script>
+      const mapEl = document.querySelector("#map");
+      const dayValue = document.querySelector("#dayValue");
+      const supplyValue = document.querySelector("#supplyValue");
+      const moraleValue = document.querySelector("#moraleValue");
+      const intelValue = document.querySelector("#intelValue");
+      const logEl = document.querySelector("#log");
+      const orderHint = document.querySelector("#orderHint");
+      const principleTitle = document.querySelector("#principleTitle");
+      const principleText = document.querySelector("#principleText");
+      const resultDialog = document.querySelector("#resultDialog");
+      const resultTitle = document.querySelector("#resultTitle");
+      const resultText = document.querySelector("#resultText");
+
+      const buttons = {
+        move: document.querySelector("#moveBtn"),
+        scout: document.querySelector("#scoutBtn"),
+        feint: document.querySelector("#feintBtn"),
+        rest: document.querySelector("#restBtn"),
+      };
+
+      const terrain = {
+        P: { name: "plains", cost: 1 },
+        F: { name: "forest", cost: 2 },
+        M: { name: "mountain", cost: 3 },
+        R: { name: "river", cost: 2 },
+      };
+
+      const layout = [
+        "PPFPRFP",
+        "PFFPRFP",
+        "PPMPRFP",
+        "RRMPRPP",
+        "PPPPFMP",
+        "PFFPFMP",
+        "PPPPPPP",
+      ];
+
+      const principles = [
+        { title: "Laying Plans", text: "Every move spends supplies. Compare cost, distance, morale, and enemy position before committing." },
+        { title: "Attack by Stratagem", text: "A feint can move an enemy away from a road or stronghold. Winning without a costly fight is the best result." },
+        { title: "Use of Spies", text: "Scouting reveals hidden threats and lowers the cost of the next advance into uncertain ground." },
+        { title: "Terrain", text: "Passes and rivers slow an army. Forests hide scouts and ambushes. A direct road is not always the best road." },
+        { title: "Energy", text: "Rest restores morale, but time favors the defender. A long campaign drains the state." },
+      ];
+
+      let state;
+
+      function initialState() {
+        return {
+          day: 1,
+          supplies: 18,
+          morale: 8,
+          intel: 2,
+          position: { x: 0, y: 6 },
+          goal: { x: 6, y: 0 },
+          selectedOrder: "move",
+          scouted: new Set(["0,6", "1,6", "0,5"]),
+          exhaustedTiles: new Set(),
+          enemies: [
+            { x: 2, y: 5, strength: 2 },
+            { x: 4, y: 4, strength: 3 },
+            { x: 5, y: 2, strength: 2 },
+            { x: 3, y: 1, strength: 3 },
+          ],
+          intelSites: new Set(["1,4", "3,5", "5,1"]),
+          log: ["Campaign opened. The stronghold lies northeast; choose speed, secrecy, or recovery."],
+          gameOver: false,
+        };
+      }
+
+      function key(x, y) {
+        return `${x},${y}`;
+      }
+
+      function inBounds(x, y) {
+        return x >= 0 && y >= 0 && x < 7 && y < 7;
+      }
+
+      function distance(a, b) {
+        return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+      }
+
+      function enemyAt(x, y) {
+        return state.enemies.find((enemy) => enemy.x === x && enemy.y === y);
+      }
+
+      function isAdjacent(x, y) {
+        return distance(state.position, { x, y }) === 1;
+      }
+
+      function addLog(message) {
+        state.log.push(`Day ${state.day}: ${message}`);
+        state.log = state.log.slice(-8);
+      }
+
+      function setOrder(order) {
+        state.selectedOrder = order;
+        Object.entries(buttons).forEach(([name, button]) => {
+          button.classList.toggle("active", name === order);
+        });
+
+        const hints = {
+          move: "Choose an adjacent tile to advance.",
+          scout: "Choose any nearby tile within two spaces to reveal danger. Costs 1 intel.",
+          feint: "Choose an adjacent enemy to draw it away. Costs 2 intel and 1 morale.",
+          rest: "Recover morale and a little supply, but lose a day.",
+        };
+        orderHint.textContent = hints[order];
+        render();
+      }
+
+      function revealAround(x, y) {
+        for (let dy = -1; dy <= 1; dy += 1) {
+          for (let dx = -1; dx <= 1; dx += 1) {
+            const nx = x + dx;
+            const ny = y + dy;
+            if (inBounds(nx, ny)) state.scouted.add(key(nx, ny));
+          }
+        }
+      }
+
+      function advanceDay(extra = 1) {
+        state.day += extra;
+        if (state.day > 14) {
+          state.supplies -= 1;
+          state.morale -= 1;
+          addLog("The drawn-out campaign is eroding both supply and spirit.");
+        }
+      }
+
+      function moveTo(x, y) {
+        if (!isAdjacent(x, y)) {
+          addLog("A commander cannot outrun the army. Select an adjacent tile.");
+          render();
+          return;
+        }
+
+        const tileKey = key(x, y);
+        const code = layout[y][x];
+        let cost = terrain[code].cost;
+        const isScouted = state.scouted.has(tileKey);
+        const enemy = enemyAt(x, y);
+
+        if (!isScouted) cost += 1;
+        if (state.exhaustedTiles.has(tileKey)) cost += 1;
+
+        state.supplies -= cost;
+        state.position = { x, y };
+        revealAround(x, y);
+
+        if (enemy) {
+          const prepared = isScouted ? 1 : 0;
+          const loss = Math.max(1, enemy.strength - prepared);
+          state.morale -= loss;
+          state.supplies -= enemy.strength;
+          state.enemies = state.enemies.filter((unit) => unit !== enemy);
+          addLog(`Direct battle won, but it cost ${enemy.strength} supplies and ${loss} morale.`);
+        } else if (state.intelSites.has(tileKey)) {
+          state.intel += 2;
+          state.intelSites.delete(tileKey);
+          addLog("Scouts found local guides. Intel increased by 2.");
+        } else {
+          addLog(`Advanced through ${terrain[code].name}; supply cost ${cost}.`);
+        }
+
+        state.exhaustedTiles.add(tileKey);
+        advanceDay();
+        checkEnd();
+        render();
+      }
+
+      function scoutTile(x, y) {
+        if (distance(state.position, { x, y }) > 2) {
+          addLog("Scouts cannot range that far from the column.");
+          render();
+          return;
+        }
+        if (state.intel < 1) {
+          addLog("No intelligence network remains. Recover or find guides.");
+          render();
+          return;
+        }
+
+        state.intel -= 1;
+        revealAround(x, y);
+        addLog(enemyAt(x, y) ? "Scouts located an enemy screen before it could ambush you." : "Scouts mapped the ground and reduced uncertainty.");
+        advanceDay();
+        checkEnd();
+        render();
+      }
+
+      function feintAt(x, y) {
+        const enemy = enemyAt(x, y);
+        if (!enemy || !isAdjacent(x, y)) {
+          addLog("A feint needs an adjacent enemy formation.");
+          render();
+          return;
+        }
+        if (state.intel < 2 || state.morale < 2) {
+          addLog("A feint needs 2 intel and enough morale to hold discipline.");
+          render();
+          return;
+        }
+
+        const options = [
+          { x: enemy.x + 1, y: enemy.y },
+          { x: enemy.x - 1, y: enemy.y },
+          { x: enemy.x, y: enemy.y + 1 },
+          { x: enemy.x, y: enemy.y - 1 },
+        ].filter((tile) => inBounds(tile.x, tile.y) && !enemyAt(tile.x, tile.y) && key(tile.x, tile.y) !== key(state.goal.x, state.goal.y) && distance(tile, state.position) > distance(enemy, state.position));
+
+        state.intel -= 2;
+        state.morale -= 1;
+
+        if (options.length) {
+          const destination = options.sort((a, b) => terrain[layout[a.y][a.x]].cost - terrain[layout[b.y][b.x]].cost)[0];
+          enemy.x = destination.x;
+          enemy.y = destination.y;
+          addLog("False signals pulled the enemy away without battle.");
+        } else {
+          state.supplies -= 1;
+          addLog("The enemy did not move, but the feint bought time at low cost.");
+        }
+
+        advanceDay();
+        checkEnd();
+        render();
+      }
+
+      function recover() {
+        state.morale = Math.min(10, state.morale + 2);
+        state.supplies = Math.min(20, state.supplies + 1);
+        addLog("The army recovered order. Time, however, still moved.");
+        advanceDay(2);
+        checkEnd();
+        render();
+      }
+
+      function handleTileClick(x, y) {
+        if (state.gameOver) return;
+        if (state.selectedOrder === "move") moveTo(x, y);
+        if (state.selectedOrder === "scout") scoutTile(x, y);
+        if (state.selectedOrder === "feint") feintAt(x, y);
+      }
+
+      function checkEnd() {
+        if (key(state.position.x, state.position.y) === key(state.goal.x, state.goal.y)) {
+          state.gameOver = true;
+          showResult("Victory", `The stronghold fell on day ${state.day}. You won with ${Math.max(0, state.supplies)} supplies and ${Math.max(0, state.morale)} morale remaining.`);
+        } else if (state.supplies <= 0 || state.morale <= 0) {
+          state.gameOver = true;
+          showResult("Campaign Lost", "The army can no longer continue. Sun Tzu warns that prolonged, costly war consumes the state first.");
+        }
+      }
+
+      function showResult(title, text) {
+        resultTitle.textContent = title;
+        resultText.textContent = text;
+        if (typeof resultDialog.showModal === "function") resultDialog.showModal();
+        else alert(`${title}\n\n${text}`);
+      }
+
+      function choosePrinciple() {
+        if (state.selectedOrder === "feint") return principles[1];
+        if (state.selectedOrder === "scout") return principles[2];
+        if (state.selectedOrder === "rest") return principles[4];
+        const code = layout[state.position.y][state.position.x];
+        if (code === "M" || code === "R" || code === "F") return principles[3];
+        return principles[0];
+      }
+
+      function render() {
+        dayValue.textContent = state.day;
+        supplyValue.textContent = Math.max(0, state.supplies);
+        moraleValue.textContent = Math.max(0, state.morale);
+        intelValue.textContent = state.intel;
+
+        const principle = choosePrinciple();
+        principleTitle.textContent = principle.title;
+        principleText.textContent = principle.text;
+
+        logEl.innerHTML = "";
+        state.log.forEach((entry) => {
+          const li = document.createElement("li");
+          li.textContent = entry;
+          logEl.append(li);
+        });
+
+        mapEl.innerHTML = "";
+        for (let y = 0; y < 7; y += 1) {
+          for (let x = 0; x < 7; x += 1) {
+            const tileKey = key(x, y);
+            const code = layout[y][x];
+            const tile = document.createElement("button");
+            tile.type = "button";
+            tile.className = `tile ${terrain[code].name}`;
+            tile.setAttribute("role", "gridcell");
+            tile.setAttribute("aria-label", `${terrain[code].name} tile ${x + 1}, ${y + 1}`);
+            tile.classList.toggle("fog", !state.scouted.has(tileKey));
+            tile.classList.toggle("selected", tileKey === key(state.position.x, state.position.y));
+            tile.classList.toggle("reachable", state.selectedOrder === "move" && isAdjacent(x, y));
+            tile.addEventListener("click", () => handleTileClick(x, y));
+
+            if (tileKey === key(state.goal.x, state.goal.y)) {
+              const goal = document.createElement("span");
+              goal.className = "goal";
+              goal.textContent = "G";
+              tile.append(goal);
+            }
+
+            if (tileKey === key(state.position.x, state.position.y)) {
+              const unit = document.createElement("span");
+              unit.className = "unit";
+              unit.textContent = "A";
+              tile.append(unit);
+            } else if (state.scouted.has(tileKey)) {
+              const enemy = enemyAt(x, y);
+              if (enemy) {
+                const foe = document.createElement("span");
+                foe.className = "foe";
+                foe.textContent = enemy.strength;
+                tile.append(foe);
+              } else if (state.intelSites.has(tileKey)) {
+                const intel = document.createElement("span");
+                intel.className = "intel";
+                intel.textContent = "?";
+                tile.append(intel);
+              }
+            }
+
+            const cost = document.createElement("span");
+            cost.className = "terrain-cost";
+            cost.textContent = terrain[code].cost;
+            tile.append(cost);
+            mapEl.append(tile);
+          }
+        }
+      }
+
+      function reset() {
+        state = initialState();
+        setOrder("move");
+        if (resultDialog.open) resultDialog.close();
+        render();
+      }
+
+      buttons.move.addEventListener("click", () => setOrder("move"));
+      buttons.scout.addEventListener("click", () => setOrder("scout"));
+      buttons.feint.addEventListener("click", () => setOrder("feint"));
+      buttons.rest.addEventListener("click", () => {
+        setOrder("rest");
+        recover();
+      });
+      document.querySelector("#resetBtn").addEventListener("click", reset);
+      document.querySelector("#dialogResetBtn").addEventListener("click", reset);
+
+      reset();
+    </script>
+  </body>
+</html>
