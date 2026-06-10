@@ -4,9 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#151816" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="Silent Campaign" />
-    <title>Silent Campaign</title>
+    <title>Silent Campaign 3D</title>
     <style>
       :root {
         color-scheme: dark;
@@ -16,7 +14,7 @@
         --gold: #d8b45c;
         --red: #b95747;
         --blue: #6ea4b8;
-        --panel: rgba(25, 29, 27, 0.94);
+        --panel: rgba(21, 25, 23, 0.9);
       }
 
       * {
@@ -27,9 +25,10 @@
       body {
         margin: 0;
         min-height: 100svh;
+        overflow: hidden;
         background:
-          radial-gradient(circle at 12% 8%, rgba(216, 180, 92, 0.18), transparent 28%),
-          linear-gradient(135deg, #101311 0%, #222820 46%, #161817 100%);
+          radial-gradient(circle at 12% 8%, rgba(216, 180, 92, 0.22), transparent 30%),
+          linear-gradient(135deg, #0f1211 0%, #202820 52%, #151817 100%);
         color: var(--ink);
         font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
@@ -46,45 +45,62 @@
         touch-action: manipulation;
       }
 
+      button:hover,
+      button:focus-visible {
+        border-color: var(--gold);
+        outline: none;
+      }
+
       button:active {
         transform: translateY(1px);
       }
 
-      .shell {
+      .app {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) 340px;
-        gap: 14px;
+        grid-template-columns: minmax(0, 1fr) 350px;
         min-height: 100svh;
-        padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
       }
 
-      .war-table,
-      .command {
-        border: 1px solid rgba(216, 180, 92, 0.28);
-        background: rgba(19, 23, 21, 0.9);
-        box-shadow: 0 18px 56px rgba(0, 0, 0, 0.34);
-      }
-
-      .war-table {
-        display: flex;
-        flex-direction: column;
+      .stage {
+        position: relative;
         min-width: 0;
-        padding: 16px;
+        background: #101311;
       }
 
-      .topbar {
-        display: flex;
-        align-items: start;
-        justify-content: space-between;
-        gap: 12px;
-        margin-bottom: 12px;
+      #scene {
+        display: block;
+        width: 100%;
+        height: 100svh;
+        touch-action: none;
+      }
+
+      .hud {
+        position: absolute;
+        inset: max(12px, env(safe-area-inset-top)) auto auto max(12px, env(safe-area-inset-left));
+        display: grid;
+        gap: 10px;
+        width: min(430px, calc(100% - 24px));
+        pointer-events: none;
+      }
+
+      .titlebar,
+      .scoreboard,
+      .selected-tile {
+        border: 1px solid rgba(216, 180, 92, 0.28);
+        background: rgba(12, 15, 14, 0.76);
+        backdrop-filter: blur(8px);
+        box-shadow: 0 18px 52px rgba(0, 0, 0, 0.34);
+      }
+
+      .titlebar {
+        padding: 13px 14px;
       }
 
       .eyebrow {
         margin: 0 0 4px;
         color: var(--gold);
-        font-size: 0.74rem;
-        font-weight: 800;
+        font-size: 0.72rem;
+        font-weight: 850;
         text-transform: uppercase;
       }
 
@@ -97,8 +113,8 @@
       h1 {
         margin-bottom: 0;
         font-family: Georgia, "Times New Roman", serif;
-        font-size: clamp(2rem, 8vw, 4rem);
-        line-height: 0.96;
+        font-size: clamp(2rem, 4vw, 3.1rem);
+        line-height: 0.94;
       }
 
       h2 {
@@ -108,15 +124,13 @@
 
       .scoreboard {
         display: grid;
-        grid-template-columns: repeat(4, minmax(62px, 1fr));
-        gap: 7px;
-        min-width: min(430px, 100%);
+        grid-template-columns: repeat(4, minmax(64px, 1fr));
+        gap: 1px;
       }
 
       .scoreboard div {
-        border: 1px solid var(--line);
-        background: rgba(12, 15, 14, 0.7);
-        padding: 8px;
+        padding: 9px 10px;
+        background: rgba(20, 24, 22, 0.72);
       }
 
       .scoreboard span {
@@ -131,125 +145,21 @@
         font-size: 1.25rem;
       }
 
-      .map-wrap {
-        display: grid;
-        flex: 1;
-        place-items: center;
-        padding: 10px;
-        border: 1px solid var(--line);
-        background:
-          linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-          rgba(10, 13, 12, 0.72);
-        background-size: 24px 24px;
-      }
-
-      .map {
-        display: grid;
-        grid-template-columns: repeat(7, minmax(36px, 1fr));
-        grid-template-rows: repeat(7, minmax(36px, 1fr));
-        gap: 5px;
-        width: min(100%, 620px, max(310px, calc(100svh - 230px)));
-        aspect-ratio: 1;
-      }
-
-      .tile {
-        position: relative;
-        display: grid;
-        min-width: 0;
-        place-items: center;
-        border-radius: 4px;
-        border: 1px solid rgba(244, 240, 230, 0.16);
-        color: var(--ink);
-      }
-
-      .tile.plains { background: #4f6746; }
-      .tile.forest { background: #244a39; }
-      .tile.mountain { background: #5b5f5f; }
-      .tile.river { background: #2d6676; }
-      .tile.fog { filter: saturate(0.35) brightness(0.52); }
-      .tile.selected { box-shadow: inset 0 0 0 3px var(--gold); }
-      .tile.reachable { border-color: rgba(216, 180, 92, 0.94); }
-
-      .unit,
-      .foe,
-      .goal,
-      .intel {
-        display: grid;
-        place-items: center;
-        width: 48%;
-        min-width: 23px;
-        aspect-ratio: 1;
-        border-radius: 50%;
-        font-size: 0.95rem;
-        font-weight: 900;
-      }
-
-      .unit {
-        background: var(--gold);
-        color: #171713;
-      }
-
-      .foe {
-        background: var(--red);
-      }
-
-      .goal {
-        width: 58%;
-        border-radius: 4px;
-        background: #7d3f3a;
-      }
-
-      .intel {
-        background: var(--blue);
-        color: #081113;
-      }
-
-      .terrain-cost {
-        position: absolute;
-        right: 4px;
-        bottom: 2px;
-        color: rgba(255, 255, 255, 0.65);
-        font-size: 0.68rem;
-        font-weight: 800;
-      }
-
-      .legend {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 9px;
-        margin-top: 10px;
+      .selected-tile {
+        min-height: 44px;
+        padding: 10px 12px;
         color: var(--muted);
-        font-size: 0.78rem;
+        line-height: 1.35;
       }
-
-      .legend span {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-      }
-
-      .swatch,
-      .marker {
-        display: inline-block;
-        width: 13px;
-        height: 13px;
-        border: 1px solid rgba(255, 255, 255, 0.25);
-      }
-
-      .swatch.plains { background: #4f6746; }
-      .swatch.forest { background: #244a39; }
-      .swatch.mountain { background: #5b5f5f; }
-      .swatch.river { background: #2d6676; }
-      .marker { border-radius: 50%; }
-      .marker.scout { background: var(--blue); }
-      .marker.stronghold { border-radius: 3px; background: #7d3f3a; }
 
       .command {
         display: flex;
         flex-direction: column;
         gap: 10px;
-        padding: 10px;
+        min-height: 100svh;
+        padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) 12px;
+        border-left: 1px solid rgba(216, 180, 92, 0.28);
+        background: rgba(16, 19, 18, 0.94);
         overflow: auto;
       }
 
@@ -302,10 +212,45 @@
         color: var(--ink);
       }
 
+      .legend {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        color: var(--muted);
+        font-size: 0.8rem;
+      }
+
+      .legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .swatch,
+      .marker {
+        display: inline-block;
+        width: 13px;
+        height: 13px;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+      }
+
+      .swatch.plains { background: #4f6746; }
+      .swatch.forest { background: #244a39; }
+      .swatch.mountain { background: #5b5f5f; }
+      .swatch.river { background: #2d6676; }
+      .marker { border-radius: 50%; }
+      .marker.army { background: var(--gold); }
+      .marker.enemy { background: var(--red); }
+
       .reset {
         width: 100%;
         margin-top: auto;
         background: #3a2f2d;
+      }
+
+      .camera-note {
+        color: var(--muted);
+        font-size: 0.78rem;
       }
 
       dialog {
@@ -335,65 +280,77 @@
       }
 
       @media (max-width: 920px) {
-        .shell {
+        body {
+          overflow: auto;
+        }
+
+        .app {
           grid-template-columns: 1fr;
         }
 
+        .stage {
+          display: flex;
+          flex-direction: column;
+        }
+
+        #scene {
+          order: 2;
+          height: 64svh;
+          min-height: 430px;
+        }
+
+        .hud {
+          position: relative;
+          inset: auto;
+          order: 1;
+          width: calc(100% - 24px);
+          margin: 12px;
+        }
+
         .command {
+          min-height: auto;
+          border-left: 0;
+          border-top: 1px solid rgba(216, 180, 92, 0.28);
           overflow: visible;
         }
       }
 
-      @media (max-width: 680px) {
-        .shell {
-          gap: 10px;
+      @media (max-width: 560px) {
+        #scene {
+          height: 58svh;
+          min-height: 390px;
         }
 
-        .war-table {
-          padding: 10px;
+        .hud {
+          gap: 8px;
         }
 
-        .topbar {
-          display: block;
+        .titlebar {
+          padding: 10px 11px;
         }
 
         .scoreboard {
           grid-template-columns: repeat(4, 1fr);
-          margin-top: 10px;
         }
 
-        .map-wrap {
+        .scoreboard div {
           padding: 7px;
         }
 
-        .map {
-          width: min(100%, calc(100svw - 38px));
-          gap: 4px;
-        }
-
-        .legend {
-          font-size: 0.74rem;
-        }
-      }
-
-      @media (max-width: 390px) {
-        .scoreboard {
-          grid-template-columns: repeat(2, 1fr);
-        }
-
-        .orders {
-          grid-template-columns: 1fr 1fr;
+        .scoreboard strong {
+          font-size: 1.05rem;
         }
       }
     </style>
   </head>
   <body>
-    <main class="shell">
-      <section class="war-table" aria-label="Game board">
-        <div class="topbar">
-          <div>
+    <main class="app">
+      <section class="stage" aria-label="3D campaign map">
+        <canvas id="scene"></canvas>
+        <div class="hud">
+          <div class="titlebar">
             <p class="eyebrow">Sun Tzu inspired strategy</p>
-            <h1>Silent Campaign</h1>
+            <h1>Silent Campaign 3D</h1>
           </div>
           <div class="scoreboard" aria-label="Campaign state">
             <div><span>Day</span><strong id="dayValue">1</strong></div>
@@ -401,19 +358,7 @@
             <div><span>Morale</span><strong id="moraleValue">8</strong></div>
             <div><span>Intel</span><strong id="intelValue">2</strong></div>
           </div>
-        </div>
-
-        <div class="map-wrap">
-          <div id="map" class="map" role="grid" aria-label="Campaign map"></div>
-        </div>
-
-        <div class="legend" aria-label="Map legend">
-          <span><i class="swatch plains"></i> Plains</span>
-          <span><i class="swatch forest"></i> Forest</span>
-          <span><i class="swatch mountain"></i> Pass</span>
-          <span><i class="swatch river"></i> River</span>
-          <span><i class="marker scout"></i> Scout</span>
-          <span><i class="marker stronghold"></i> Stronghold</span>
+          <div id="selectedTile" class="selected-tile">Tap a nearby terrain tile to advance.</div>
         </div>
       </section>
 
@@ -444,6 +389,16 @@
           <ol id="log" class="log"></ol>
         </section>
 
+        <section class="panel legend" aria-label="Map legend">
+          <span><i class="swatch plains"></i> Plains</span>
+          <span><i class="swatch forest"></i> Forest</span>
+          <span><i class="swatch mountain"></i> Pass</span>
+          <span><i class="swatch river"></i> River</span>
+          <span><i class="marker army"></i> Army</span>
+          <span><i class="marker enemy"></i> Enemy</span>
+        </section>
+
+        <p class="camera-note">Drag the war table to rotate. Tap a tile to issue the selected order.</p>
         <button id="resetBtn" class="reset" type="button">Restart Campaign</button>
       </aside>
     </main>
@@ -456,20 +411,22 @@
       </div>
     </dialog>
 
-    <script>
-      const mapEl = document.querySelector("#map");
+    <script type="module">
+      import * as THREE from "https://unpkg.com/three@0.165.0/build/three.module.js";
+
+      const canvas = document.querySelector("#scene");
       const dayValue = document.querySelector("#dayValue");
       const supplyValue = document.querySelector("#supplyValue");
       const moraleValue = document.querySelector("#moraleValue");
       const intelValue = document.querySelector("#intelValue");
       const logEl = document.querySelector("#log");
       const orderHint = document.querySelector("#orderHint");
+      const selectedTile = document.querySelector("#selectedTile");
       const principleTitle = document.querySelector("#principleTitle");
       const principleText = document.querySelector("#principleText");
       const resultDialog = document.querySelector("#resultDialog");
       const resultTitle = document.querySelector("#resultTitle");
       const resultText = document.querySelector("#resultText");
-
       const buttons = {
         move: document.querySelector("#moveBtn"),
         scout: document.querySelector("#scoutBtn"),
@@ -478,10 +435,10 @@
       };
 
       const terrain = {
-        P: { name: "plains", cost: 1 },
-        F: { name: "forest", cost: 2 },
-        M: { name: "mountain", cost: 3 },
-        R: { name: "river", cost: 2 },
+        P: { label: "plains", cost: 1, color: 0x4f6746, height: 0.16 },
+        F: { label: "forest", cost: 2, color: 0x244a39, height: 0.22 },
+        M: { label: "mountain pass", cost: 3, color: 0x5b5f5f, height: 0.42 },
+        R: { label: "river", cost: 2, color: 0x2d6676, height: 0.08 },
       };
 
       const layout = [
@@ -496,13 +453,51 @@
 
       const principles = [
         { title: "Laying Plans", text: "Every move spends supplies. Compare cost, distance, morale, and enemy position before committing." },
-        { title: "Attack by Stratagem", text: "A feint can move an enemy away from a road or stronghold. Winning without a costly fight is the best result." },
-        { title: "Use of Spies", text: "Scouting reveals hidden threats and lowers the cost of the next advance into uncertain ground." },
+        { title: "Attack by Stratagem", text: "A feint can pull an enemy away from a road or stronghold. Winning without a costly fight is the best result." },
+        { title: "Use of Spies", text: "Scouting reveals hidden threats and lowers the risk of advancing into uncertain ground." },
         { title: "Terrain", text: "Passes and rivers slow an army. Forests hide scouts and ambushes. A direct road is not always the best road." },
         { title: "Energy", text: "Rest restores morale, but time favors the defender. A long campaign drains the state." },
       ];
 
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x101311);
+      scene.fog = new THREE.Fog(0x101311, 11, 25);
+
+      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+      const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+      const cameraTarget = new THREE.Vector3(0, 0, 0);
+      let cameraAngle = (3 * Math.PI) / 4;
+      let cameraHeight = 9.6;
+      let cameraRadius = 11.5;
+
+      const raycaster = new THREE.Raycaster();
+      const pointer = new THREE.Vector2();
+      const tileMeshes = [];
+      const fogMeshes = new Map();
+      const enemyMeshes = new Map();
+      const intelMeshes = new Map();
+      let hoverTile = null;
+      let armyGroup;
+      let goalGroup;
       let state;
+      let moveAnimation = null;
+      let dragStart = null;
+      let didDrag = false;
+
+      const materials = {
+        board: new THREE.MeshStandardMaterial({ color: 0x211a13, roughness: 0.72, metalness: 0.05 }),
+        edge: new THREE.MeshStandardMaterial({ color: 0x5b4229, roughness: 0.8 }),
+        fog: new THREE.MeshStandardMaterial({ color: 0xd8d1bf, transparent: true, opacity: 0.22, roughness: 0.9, depthWrite: false }),
+        highlight: new THREE.MeshStandardMaterial({ color: 0xd8b45c, emissive: 0x5a4210, transparent: true, opacity: 0.5, depthWrite: false }),
+        army: new THREE.MeshStandardMaterial({ color: 0xd8b45c, roughness: 0.45 }),
+        enemy: new THREE.MeshStandardMaterial({ color: 0xb95747, roughness: 0.52 }),
+        blue: new THREE.MeshStandardMaterial({ color: 0x6ea4b8, roughness: 0.45 }),
+        dark: new THREE.MeshStandardMaterial({ color: 0x171713, roughness: 0.65 }),
+      };
 
       function initialState() {
         return {
@@ -539,12 +534,21 @@
         return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
       }
 
+      function isAdjacent(x, y) {
+        return distance(state.position, { x, y }) === 1;
+      }
+
       function enemyAt(x, y) {
         return state.enemies.find((enemy) => enemy.x === x && enemy.y === y);
       }
 
-      function isAdjacent(x, y) {
-        return distance(state.position, { x, y }) === 1;
+      function worldForTile(x, y) {
+        return new THREE.Vector3((x - 3) * 1.14, 0, (y - 3) * 1.14);
+      }
+
+      function topYForTile(x, y) {
+        const code = layout[y][x];
+        return terrain[code].height + 0.04;
       }
 
       function addLog(message) {
@@ -552,20 +556,172 @@
         state.log = state.log.slice(-8);
       }
 
-      function setOrder(order) {
-        state.selectedOrder = order;
-        Object.entries(buttons).forEach(([name, button]) => {
-          button.classList.toggle("active", name === order);
-        });
+      function addLights() {
+        scene.add(new THREE.HemisphereLight(0xf3ead7, 0x18211d, 1.45));
 
-        const hints = {
-          move: "Choose an adjacent tile to advance.",
-          scout: "Choose any nearby tile within two spaces to reveal danger. Costs 1 intel.",
-          feint: "Choose an adjacent enemy to draw it away. Costs 2 intel and 1 morale.",
-          rest: "Recover morale and a little supply, but lose a day.",
-        };
-        orderHint.textContent = hints[order];
-        render();
+        const keyLight = new THREE.DirectionalLight(0xf8dfad, 2.4);
+        keyLight.position.set(-4.5, 9, 5);
+        keyLight.castShadow = true;
+        keyLight.shadow.mapSize.set(2048, 2048);
+        keyLight.shadow.camera.near = 1;
+        keyLight.shadow.camera.far = 25;
+        keyLight.shadow.camera.left = -9;
+        keyLight.shadow.camera.right = 9;
+        keyLight.shadow.camera.top = 9;
+        keyLight.shadow.camera.bottom = -9;
+        scene.add(keyLight);
+
+        const rim = new THREE.DirectionalLight(0x6ea4b8, 0.7);
+        rim.position.set(6, 5, -8);
+        scene.add(rim);
+      }
+
+      function createBoard() {
+        const base = new THREE.Mesh(
+          new THREE.BoxGeometry(9.2, 0.36, 9.2),
+          materials.board,
+        );
+        base.position.y = -0.22;
+        base.receiveShadow = true;
+        scene.add(base);
+
+        const rim = new THREE.Mesh(
+          new THREE.BoxGeometry(9.8, 0.24, 9.8),
+          materials.edge,
+        );
+        rim.position.y = -0.42;
+        rim.receiveShadow = true;
+        scene.add(rim);
+
+        for (let y = 0; y < 7; y += 1) {
+          for (let x = 0; x < 7; x += 1) {
+            const code = layout[y][x];
+            const spec = terrain[code];
+            const pos = worldForTile(x, y);
+            const material = new THREE.MeshStandardMaterial({
+              color: spec.color,
+              roughness: code === "R" ? 0.32 : 0.72,
+              metalness: code === "R" ? 0.05 : 0,
+            });
+            const tile = new THREE.Mesh(new THREE.BoxGeometry(1.04, spec.height, 1.04), material);
+            tile.position.set(pos.x, spec.height / 2, pos.z);
+            tile.castShadow = true;
+            tile.receiveShadow = true;
+            tile.userData = { x, y, code, baseColor: spec.color };
+            scene.add(tile);
+            tileMeshes.push(tile);
+
+            if (code === "F") addTrees(pos, spec.height);
+            if (code === "M") addMountain(pos, spec.height);
+            if (code === "R") addRiver(pos, spec.height);
+
+            const fog = new THREE.Mesh(new THREE.BoxGeometry(1.02, 0.06, 1.02), materials.fog);
+            fog.position.set(pos.x, spec.height + 0.12, pos.z);
+            fog.userData = { fogFor: key(x, y) };
+            scene.add(fog);
+            fogMeshes.set(key(x, y), fog);
+          }
+        }
+      }
+
+      function addTrees(pos, baseHeight) {
+        const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5a3b25, roughness: 0.8 });
+        const leafMat = new THREE.MeshStandardMaterial({ color: 0x1c5a35, roughness: 0.7 });
+        const offsets = [
+          [-0.25, -0.2],
+          [0.22, -0.16],
+          [0.02, 0.22],
+        ];
+        offsets.forEach(([ox, oz], index) => {
+          const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.22, 6), trunkMat);
+          trunk.position.set(pos.x + ox, baseHeight + 0.12, pos.z + oz);
+          trunk.castShadow = true;
+          scene.add(trunk);
+
+          const leaves = new THREE.Mesh(new THREE.ConeGeometry(0.16 + index * 0.02, 0.45, 7), leafMat);
+          leaves.position.set(pos.x + ox, baseHeight + 0.42, pos.z + oz);
+          leaves.castShadow = true;
+          scene.add(leaves);
+        });
+      }
+
+      function addMountain(pos, baseHeight) {
+        const rockMat = new THREE.MeshStandardMaterial({ color: 0x747878, roughness: 0.86 });
+        const peak = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.72, 5), rockMat);
+        peak.position.set(pos.x - 0.08, baseHeight + 0.36, pos.z - 0.03);
+        peak.castShadow = true;
+        scene.add(peak);
+      }
+
+      function addRiver(pos, baseHeight) {
+        const stream = new THREE.Mesh(
+          new THREE.PlaneGeometry(0.86, 0.28),
+          new THREE.MeshStandardMaterial({ color: 0x79bfd1, roughness: 0.2, metalness: 0.15, transparent: true, opacity: 0.72 }),
+        );
+        stream.rotation.x = -Math.PI / 2;
+        stream.position.set(pos.x, baseHeight + 0.043, pos.z);
+        scene.add(stream);
+      }
+
+      function createArmyPiece() {
+        const group = new THREE.Group();
+        const base = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 0.16, 18), materials.army);
+        base.castShadow = true;
+        group.add(base);
+
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.72, 8), materials.dark);
+        pole.position.y = 0.42;
+        pole.castShadow = true;
+        group.add(pole);
+
+        const banner = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.22, 0.045), materials.army);
+        banner.position.set(0.17, 0.68, 0);
+        banner.castShadow = true;
+        group.add(banner);
+        return group;
+      }
+
+      function createEnemyPiece(strength) {
+        const group = new THREE.Group();
+        const base = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.25, 0.14, 18), materials.enemy);
+        base.castShadow = true;
+        group.add(base);
+        const banner = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.18, 0.05), materials.enemy);
+        banner.position.set(0.12, 0.45 + strength * 0.03, 0);
+        banner.castShadow = true;
+        group.add(banner);
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.56, 8), materials.dark);
+        pole.position.y = 0.32;
+        pole.castShadow = true;
+        group.add(pole);
+        return group;
+      }
+
+      function createStronghold() {
+        const group = new THREE.Group();
+        const wallMat = new THREE.MeshStandardMaterial({ color: 0x7d3f3a, roughness: 0.74 });
+        const keep = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.52, 0.42), wallMat);
+        keep.position.y = 0.28;
+        keep.castShadow = true;
+        group.add(keep);
+        [-0.28, 0.28].forEach((x) => {
+          [-0.28, 0.28].forEach((z) => {
+            const tower = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.62, 8), wallMat);
+            tower.position.set(x, 0.31, z);
+            tower.castShadow = true;
+            group.add(tower);
+          });
+        });
+        return group;
+      }
+
+      function createIntelPiece() {
+        const group = new THREE.Group();
+        const orb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.16, 1), materials.blue);
+        orb.position.y = 0.22;
+        orb.castShadow = true;
+        group.add(orb);
+        return group;
       }
 
       function revealAround(x, y) {
@@ -587,10 +743,25 @@
         }
       }
 
+      function setOrder(order) {
+        state.selectedOrder = order;
+        Object.entries(buttons).forEach(([name, button]) => {
+          button.classList.toggle("active", name === order);
+        });
+        const hints = {
+          move: "Choose an adjacent tile to advance.",
+          scout: "Choose any nearby tile within two spaces to reveal danger. Costs 1 intel.",
+          feint: "Choose an adjacent enemy to draw it away. Costs 2 intel and 1 morale.",
+          rest: "Recover morale and a little supply, but lose a day.",
+        };
+        orderHint.textContent = hints[order];
+        updateUI();
+      }
+
       function moveTo(x, y) {
         if (!isAdjacent(x, y)) {
           addLog("A commander cannot outrun the army. Select an adjacent tile.");
-          render();
+          updateUI();
           return;
         }
 
@@ -599,10 +770,10 @@
         let cost = terrain[code].cost;
         const isScouted = state.scouted.has(tileKey);
         const enemy = enemyAt(x, y);
-
         if (!isScouted) cost += 1;
         if (state.exhaustedTiles.has(tileKey)) cost += 1;
 
+        const from = armyGroup.position.clone();
         state.supplies -= cost;
         state.position = { x, y };
         revealAround(x, y);
@@ -619,45 +790,48 @@
           state.intelSites.delete(tileKey);
           addLog("Scouts found local guides. Intel increased by 2.");
         } else {
-          addLog(`Advanced through ${terrain[code].name}; supply cost ${cost}.`);
+          addLog(`Advanced through ${terrain[code].label}; supply cost ${cost}.`);
         }
 
         state.exhaustedTiles.add(tileKey);
+        animateArmy(from, armyWorldPosition(x, y));
         advanceDay();
         checkEnd();
-        render();
+        updateSceneState();
+        updateUI();
       }
 
       function scoutTile(x, y) {
         if (distance(state.position, { x, y }) > 2) {
           addLog("Scouts cannot range that far from the column.");
-          render();
+          updateUI();
           return;
         }
         if (state.intel < 1) {
           addLog("No intelligence network remains. Recover or find guides.");
-          render();
+          updateUI();
           return;
         }
-
         state.intel -= 1;
         revealAround(x, y);
         addLog(enemyAt(x, y) ? "Scouts located an enemy screen before it could ambush you." : "Scouts mapped the ground and reduced uncertainty.");
+        pulseTile(x, y, 0x6ea4b8);
         advanceDay();
         checkEnd();
-        render();
+        updateSceneState();
+        updateUI();
       }
 
       function feintAt(x, y) {
         const enemy = enemyAt(x, y);
         if (!enemy || !isAdjacent(x, y)) {
           addLog("A feint needs an adjacent enemy formation.");
-          render();
+          updateUI();
           return;
         }
         if (state.intel < 2 || state.morale < 2) {
           addLog("A feint needs 2 intel and enough morale to hold discipline.");
-          render();
+          updateUI();
           return;
         }
 
@@ -670,20 +844,20 @@
 
         state.intel -= 2;
         state.morale -= 1;
-
         if (options.length) {
           const destination = options.sort((a, b) => terrain[layout[a.y][a.x]].cost - terrain[layout[b.y][b.x]].cost)[0];
           enemy.x = destination.x;
           enemy.y = destination.y;
-          addLog("False signals pulled the enemy away without battle.");
+          addLog("False banners pulled the enemy away without battle.");
+          pulseTile(destination.x, destination.y, 0xd8b45c);
         } else {
           state.supplies -= 1;
           addLog("The enemy did not move, but the feint bought time at low cost.");
         }
-
         advanceDay();
         checkEnd();
-        render();
+        updateSceneState();
+        updateUI();
       }
 
       function recover() {
@@ -692,14 +866,7 @@
         addLog("The army recovered order. Time, however, still moved.");
         advanceDay(2);
         checkEnd();
-        render();
-      }
-
-      function handleTileClick(x, y) {
-        if (state.gameOver) return;
-        if (state.selectedOrder === "move") moveTo(x, y);
-        if (state.selectedOrder === "scout") scoutTile(x, y);
-        if (state.selectedOrder === "feint") feintAt(x, y);
+        updateUI();
       }
 
       function checkEnd() {
@@ -715,8 +882,8 @@
       function showResult(title, text) {
         resultTitle.textContent = title;
         resultText.textContent = text;
-        if (typeof resultDialog.showModal === "function") resultDialog.showModal();
-        else alert(`${title}\n\n${text}`);
+        if (typeof resultDialog.showModal === "function" && !resultDialog.open) resultDialog.showModal();
+        else if (typeof resultDialog.showModal !== "function") alert(`${title}\n\n${text}`);
       }
 
       function choosePrinciple() {
@@ -728,80 +895,199 @@
         return principles[0];
       }
 
-      function render() {
+      function updateUI() {
         dayValue.textContent = state.day;
         supplyValue.textContent = Math.max(0, state.supplies);
         moraleValue.textContent = Math.max(0, state.morale);
         intelValue.textContent = state.intel;
-
         const principle = choosePrinciple();
         principleTitle.textContent = principle.title;
         principleText.textContent = principle.text;
-
         logEl.innerHTML = "";
         state.log.forEach((entry) => {
           const li = document.createElement("li");
           li.textContent = entry;
           logEl.append(li);
         });
+      }
 
-        mapEl.innerHTML = "";
-        for (let y = 0; y < 7; y += 1) {
-          for (let x = 0; x < 7; x += 1) {
-            const tileKey = key(x, y);
-            const code = layout[y][x];
-            const tile = document.createElement("button");
-            tile.type = "button";
-            tile.className = `tile ${terrain[code].name}`;
-            tile.setAttribute("role", "gridcell");
-            tile.setAttribute("aria-label", `${terrain[code].name} tile ${x + 1}, ${y + 1}`);
-            tile.classList.toggle("fog", !state.scouted.has(tileKey));
-            tile.classList.toggle("selected", tileKey === key(state.position.x, state.position.y));
-            tile.classList.toggle("reachable", state.selectedOrder === "move" && isAdjacent(x, y));
-            tile.addEventListener("click", () => handleTileClick(x, y));
+      function updateSceneState() {
+        fogMeshes.forEach((mesh, tileKey) => {
+          mesh.visible = !state.scouted.has(tileKey);
+        });
 
-            if (tileKey === key(state.goal.x, state.goal.y)) {
-              const goal = document.createElement("span");
-              goal.className = "goal";
-              goal.textContent = "G";
-              tile.append(goal);
-            }
+        enemyMeshes.forEach((mesh) => scene.remove(mesh));
+        enemyMeshes.clear();
+        state.enemies.forEach((enemy) => {
+          if (!state.scouted.has(key(enemy.x, enemy.y))) return;
+          const group = createEnemyPiece(enemy.strength);
+          group.position.copy(pieceWorldPosition(enemy.x, enemy.y, 0.08));
+          scene.add(group);
+          enemyMeshes.set(key(enemy.x, enemy.y), group);
+        });
 
-            if (tileKey === key(state.position.x, state.position.y)) {
-              const unit = document.createElement("span");
-              unit.className = "unit";
-              unit.textContent = "A";
-              tile.append(unit);
-            } else if (state.scouted.has(tileKey)) {
-              const enemy = enemyAt(x, y);
-              if (enemy) {
-                const foe = document.createElement("span");
-                foe.className = "foe";
-                foe.textContent = enemy.strength;
-                tile.append(foe);
-              } else if (state.intelSites.has(tileKey)) {
-                const intel = document.createElement("span");
-                intel.className = "intel";
-                intel.textContent = "?";
-                tile.append(intel);
-              }
-            }
+        intelMeshes.forEach((mesh) => scene.remove(mesh));
+        intelMeshes.clear();
+        state.intelSites.forEach((tileKey) => {
+          if (!state.scouted.has(tileKey)) return;
+          const [x, y] = tileKey.split(",").map(Number);
+          const group = createIntelPiece();
+          group.position.copy(pieceWorldPosition(x, y, 0.05));
+          scene.add(group);
+          intelMeshes.set(tileKey, group);
+        });
 
-            const cost = document.createElement("span");
-            cost.className = "terrain-cost";
-            cost.textContent = terrain[code].cost;
-            tile.append(cost);
-            mapEl.append(tile);
+        tileMeshes.forEach((tile) => {
+          const { x, y, baseColor } = tile.userData;
+          tile.material.color.setHex(baseColor);
+          tile.material.emissive = tile.material.emissive || new THREE.Color(0x000000);
+          tile.material.emissive.setHex(0x000000);
+          if (state.selectedOrder === "move" && isAdjacent(x, y)) {
+            tile.material.emissive.setHex(0x3d2d08);
           }
+        });
+      }
+
+      function pieceWorldPosition(x, y, extraY = 0) {
+        const pos = worldForTile(x, y);
+        return new THREE.Vector3(pos.x, topYForTile(x, y) + extraY, pos.z);
+      }
+
+      function armyWorldPosition(x, y) {
+        return pieceWorldPosition(x, y, 0.1);
+      }
+
+      function animateArmy(from, to) {
+        moveAnimation = { from, to, start: performance.now(), duration: 460 };
+      }
+
+      function pulseTile(x, y, color) {
+        const pos = worldForTile(x, y);
+        const pulse = new THREE.Mesh(
+          new THREE.RingGeometry(0.28, 0.52, 32),
+          new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85, side: THREE.DoubleSide }),
+        );
+        pulse.rotation.x = -Math.PI / 2;
+        pulse.position.set(pos.x, topYForTile(x, y) + 0.08, pos.z);
+        pulse.userData = { born: performance.now() };
+        scene.add(pulse);
+      }
+
+      function handleTile(x, y) {
+        if (state.gameOver || moveAnimation) return;
+        if (state.selectedOrder === "move") moveTo(x, y);
+        if (state.selectedOrder === "scout") scoutTile(x, y);
+        if (state.selectedOrder === "feint") feintAt(x, y);
+      }
+
+      function updateSelectedText(tile) {
+        if (!tile) {
+          selectedTile.textContent = "Tap a nearby terrain tile to advance.";
+          return;
         }
+        const { x, y, code } = tile.userData;
+        const scouted = state.scouted.has(key(x, y));
+        const enemy = enemyAt(x, y);
+        const terrainName = terrain[code].label;
+        const cost = terrain[code].cost + (scouted ? 0 : 1);
+        selectedTile.textContent = `${terrainName} (${x + 1}, ${y + 1}) - cost ${cost}${enemy && scouted ? `, enemy strength ${enemy.strength}` : ""}${!scouted ? ", unscouted" : ""}`;
+      }
+
+      function updateCamera() {
+        camera.position.set(Math.cos(cameraAngle) * cameraRadius, cameraHeight, Math.sin(cameraAngle) * cameraRadius);
+        camera.lookAt(cameraTarget);
+      }
+
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        renderer.setSize(rect.width, rect.height, false);
+        camera.aspect = rect.width / rect.height;
+        camera.updateProjectionMatrix();
+      }
+
+      function pointerToTile(event) {
+        const rect = canvas.getBoundingClientRect();
+        pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(pointer, camera);
+        const hits = raycaster.intersectObjects(tileMeshes, false);
+        return hits[0]?.object || null;
+      }
+
+      function onPointerDown(event) {
+        dragStart = { x: event.clientX, y: event.clientY, angle: cameraAngle };
+        didDrag = false;
+        canvas.setPointerCapture(event.pointerId);
+      }
+
+      function onPointerMove(event) {
+        const tile = pointerToTile(event);
+        if (tile !== hoverTile) {
+          hoverTile = tile;
+          updateSelectedText(tile);
+        }
+        if (!dragStart) return;
+        const dx = event.clientX - dragStart.x;
+        const dy = event.clientY - dragStart.y;
+        if (Math.hypot(dx, dy) > 7) didDrag = true;
+        cameraAngle = dragStart.angle - dx * 0.006;
+        cameraHeight = THREE.MathUtils.clamp(9.6 + dy * 0.015, 7.2, 12.5);
+        updateCamera();
+      }
+
+      function onPointerUp(event) {
+        const tile = pointerToTile(event);
+        canvas.releasePointerCapture(event.pointerId);
+        dragStart = null;
+        if (!didDrag && tile) handleTile(tile.userData.x, tile.userData.y);
+      }
+
+      function animate(now) {
+        requestAnimationFrame(animate);
+        if (moveAnimation) {
+          const t = Math.min(1, (now - moveAnimation.start) / moveAnimation.duration);
+          const ease = 1 - Math.pow(1 - t, 3);
+          armyGroup.position.lerpVectors(moveAnimation.from, moveAnimation.to, ease);
+          armyGroup.position.y += Math.sin(t * Math.PI) * 0.28;
+          if (t >= 1) moveAnimation = null;
+        }
+
+        scene.children.slice().forEach((child) => {
+          if (!child.userData?.born) return;
+          const age = (now - child.userData.born) / 720;
+          child.scale.setScalar(1 + age * 1.4);
+          child.material.opacity = Math.max(0, 0.85 - age);
+          if (age >= 1) scene.remove(child);
+        });
+
+        goalGroup.rotation.y += 0.003;
+        armyGroup.rotation.y += 0.008;
+        intelMeshes.forEach((mesh) => {
+          mesh.rotation.y += 0.012;
+          mesh.position.y += Math.sin(now * 0.004) * 0.0015;
+        });
+        renderer.render(scene, camera);
       }
 
       function reset() {
         state = initialState();
-        setOrder("move");
         if (resultDialog.open) resultDialog.close();
-        render();
+        setOrder("move");
+        armyGroup.position.copy(armyWorldPosition(state.position.x, state.position.y));
+        moveAnimation = null;
+        updateSceneState();
+        updateUI();
       }
+
+      addLights();
+      createBoard();
+      armyGroup = createArmyPiece();
+      scene.add(armyGroup);
+      goalGroup = createStronghold();
+      goalGroup.position.copy(pieceWorldPosition(6, 0, 0.04));
+      scene.add(goalGroup);
+      updateCamera();
+      resize();
 
       buttons.move.addEventListener("click", () => setOrder("move"));
       buttons.scout.addEventListener("click", () => setOrder("scout"));
@@ -812,8 +1098,13 @@
       });
       document.querySelector("#resetBtn").addEventListener("click", reset);
       document.querySelector("#dialogResetBtn").addEventListener("click", reset);
+      canvas.addEventListener("pointerdown", onPointerDown);
+      canvas.addEventListener("pointermove", onPointerMove);
+      canvas.addEventListener("pointerup", onPointerUp);
+      window.addEventListener("resize", resize);
 
       reset();
+      requestAnimationFrame(animate);
     </script>
   </body>
 </html>
