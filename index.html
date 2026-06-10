@@ -471,6 +471,69 @@
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.toneMappingExposure = 1.42;
 
+      function createFallbackEnvironment() {
+        const width = 1024;
+        const height = 512;
+        const skyCanvas = document.createElement("canvas");
+        skyCanvas.width = width;
+        skyCanvas.height = height;
+        const ctx = skyCanvas.getContext("2d");
+        const gradient = ctx.createLinearGradient(0, 0, 0, height);
+        gradient.addColorStop(0, "#5f7380");
+        gradient.addColorStop(0.42, "#c4a873");
+        gradient.addColorStop(0.62, "#3b3329");
+        gradient.addColorStop(1, "#111312");
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, width, height);
+
+        const sun = ctx.createRadialGradient(width * 0.18, height * 0.36, 4, width * 0.18, height * 0.36, 190);
+        sun.addColorStop(0, "rgba(255, 239, 190, 1)");
+        sun.addColorStop(0.28, "rgba(255, 194, 103, 0.55)");
+        sun.addColorStop(1, "rgba(255, 194, 103, 0)");
+        ctx.fillStyle = sun;
+        ctx.fillRect(0, 0, width, height);
+
+        ctx.fillStyle = "rgba(30, 34, 30, 0.72)";
+        for (let i = 0; i < 2; i += 1) {
+          ctx.beginPath();
+          ctx.moveTo(0, height * (0.62 + i * 0.08));
+          for (let x = 0; x <= width; x += 64) {
+            ctx.lineTo(x, height * (0.58 + i * 0.08) + Math.sin(x * 0.018 + i) * 28);
+          }
+          ctx.lineTo(width, height);
+          ctx.lineTo(0, height);
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        const texture = new THREE.CanvasTexture(skyCanvas);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.mapping = THREE.EquirectangularReflectionMapping;
+        return texture;
+      }
+
+      function applyEnvironment(texture) {
+        texture.mapping = THREE.EquirectangularReflectionMapping;
+        scene.background = texture;
+        scene.environment = texture;
+        scene.backgroundBlurriness = 0.05;
+        scene.backgroundIntensity = 0.62;
+        scene.environmentIntensity = 1.08;
+      }
+
+      function loadHDRIBackdrop() {
+        new THREE.TextureLoader()
+          .load(
+            "https://dl.polyhaven.org/file/ph-assets/HDRIs/extra/Tonemapped%20JPG/kiara_1_dawn.jpg",
+            (texture) => {
+              texture.colorSpace = THREE.SRGBColorSpace;
+              applyEnvironment(texture);
+            },
+            undefined,
+            () => applyEnvironment(createFallbackEnvironment()),
+          );
+      }
+
       const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
       const cameraTarget = new THREE.Vector3(0, 0, 0);
       let cameraAngle = (3 * Math.PI) / 4;
@@ -1130,7 +1193,7 @@
         const dx = event.clientX - dragStart.x;
         const dy = event.clientY - dragStart.y;
         if (Math.hypot(dx, dy) > 7) didDrag = true;
-        cameraAngle = dragStart.angle - dx * 0.006;
+        cameraAngle = dragStart.angle + dx * 0.006;
         cameraHeight = THREE.MathUtils.clamp(9.6 + dy * 0.015, 7.2, 12.5);
         updateCamera();
       }
@@ -1180,6 +1243,7 @@
       }
 
       addLights();
+      loadHDRIBackdrop();
       createBoard();
       armyGroup = createArmyPiece();
       scene.add(armyGroup);
