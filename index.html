@@ -204,8 +204,15 @@
         max-height: 190px;
         margin: 0;
         padding-left: 20px;
+        padding-right: 6px;
+        overflow-y: auto;
+        overscroll-behavior: contain;
         color: var(--muted);
         line-height: 1.34;
+      }
+
+      .log li {
+        overflow-wrap: anywhere;
       }
 
       .log li:last-child {
