@@ -448,15 +448,8 @@
         R: { label: "river", cost: 2, color: 0x2d6676, height: 0.08 },
       };
 
-      const layout = [
-        "PPFPRFP",
-        "PFFPRFP",
-        "PPMPRFP",
-        "RRMPRPP",
-        "PPPPFMP",
-        "PFFPFMP",
-        "PPPPPPP",
-      ];
+      const mapSize = 7;
+      let layout = generateLayout();
 
       const principles = [
         { title: "Laying Plans", text: "Every move spends supplies. Compare cost, distance, morale, and enemy position before committing." },
@@ -560,6 +553,7 @@
       const fogMeshes = new Map();
       const enemyMeshes = new Map();
       const intelMeshes = new Map();
+      let boardGroup = new THREE.Group();
       let hoverTile = null;
       let armyGroup;
       let goalGroup;
@@ -674,16 +668,56 @@
         wall: new THREE.MeshStandardMaterial({ color: 0xffffff, map: makeTexture({ base: 0x9e554a, noise: 30, vein: 14 }), bumpMap: makeBumpTexture(42), bumpScale: 0.035, roughness: 0.62 }),
       };
 
+      function weightedTerrain() {
+        const roll = Math.random();
+        if (roll < 0.5) return "P";
+        if (roll < 0.74) return "F";
+        if (roll < 0.88) return "M";
+        return "R";
+      }
+
+      function generateLayout() {
+        const rows = Array.from({ length: mapSize }, () => Array.from({ length: mapSize }, weightedTerrain));
+        const start = { x: 0, y: mapSize - 1 };
+        const goal = { x: mapSize - 1, y: 0 };
+        let cursor = { ...start };
+        rows[cursor.y][cursor.x] = "P";
+
+        while (cursor.x !== goal.x || cursor.y !== goal.y) {
+          if (cursor.x === goal.x) cursor.y -= 1;
+          else if (cursor.y === goal.y) cursor.x += 1;
+          else if (Math.random() < 0.55) cursor.x += 1;
+          else cursor.y -= 1;
+          rows[cursor.y][cursor.x] = Math.random() < 0.78 ? "P" : "F";
+        }
+
+        let river = { x: 0, y: 2 + Math.floor(Math.random() * 3) };
+        for (let steps = 0; steps < 9 && inBounds(river.x, river.y); steps += 1) {
+          if ((river.x !== start.x || river.y !== start.y) && (river.x !== goal.x || river.y !== goal.y)) rows[river.y][river.x] = "R";
+          const moveDown = river.x > 1 && river.x < mapSize - 1 && Math.random() < 0.34;
+          if (moveDown && river.y < mapSize - 2) river.y += 1;
+          else river.x += 1;
+        }
+
+        rows[start.y][start.x] = "P";
+        rows[start.y][start.x + 1] = "P";
+        rows[start.y - 1][start.x] = "P";
+        rows[goal.y][goal.x] = "P";
+        rows[goal.y][goal.x - 1] = "F";
+        rows[goal.y + 1][goal.x] = "P";
+        return rows.map((row) => row.join(""));
+      }
+
       function initialState() {
         return {
           day: 1,
           supplies: 18,
           morale: 8,
           intel: 2,
-          position: { x: 0, y: 6 },
-          goal: { x: 6, y: 0 },
+          position: { x: 0, y: mapSize - 1 },
+          goal: { x: mapSize - 1, y: 0 },
           selectedOrder: "move",
-          scouted: new Set(["0,6", "1,6", "0,5"]),
+          scouted: new Set([key(0, mapSize - 1), key(1, mapSize - 1), key(0, mapSize - 2)]),
           exhaustedTiles: new Set(),
           enemies: [
             { x: 2, y: 5, strength: 2 },
@@ -702,7 +736,7 @@
       }
 
       function inBounds(x, y) {
-        return x >= 0 && y >= 0 && x < 7 && y < 7;
+        return x >= 0 && y >= 0 && x < mapSize && y < mapSize;
       }
 
       function distance(a, b) {
@@ -718,7 +752,8 @@
       }
 
       function worldForTile(x, y) {
-        return new THREE.Vector3((x - 3) * 1.14, 0, (y - 3) * 1.14);
+        const center = (mapSize - 1) / 2;
+        return new THREE.Vector3((x - center) * 1.14, 0, (y - center) * 1.14);
       }
 
       function topYForTile(x, y) {
@@ -756,7 +791,25 @@
         scene.add(rim);
       }
 
+      function disposeBoardObject(object) {
+        object.traverse((child) => {
+          if (child.geometry) child.geometry.dispose();
+        });
+      }
+
+      function addBoardObject(object) {
+        boardGroup.add(object);
+      }
+
       function createBoard() {
+        if (boardGroup.parent) {
+          scene.remove(boardGroup);
+          disposeBoardObject(boardGroup);
+        }
+        boardGroup = new THREE.Group();
+        tileMeshes.length = 0;
+        fogMeshes.clear();
+
         const tileGeometry = new THREE.BoxGeometry(1.04, 1, 1.04, 3, 1, 3);
         const base = new THREE.Mesh(
           new THREE.BoxGeometry(9.2, 0.36, 9.2),
@@ -764,7 +817,7 @@
         );
         base.position.y = -0.22;
         base.receiveShadow = true;
-        scene.add(base);
+        addBoardObject(base);
 
         const rim = new THREE.Mesh(
           new THREE.BoxGeometry(9.8, 0.24, 9.8),
@@ -772,10 +825,10 @@
         );
         rim.position.y = -0.42;
         rim.receiveShadow = true;
-        scene.add(rim);
+        addBoardObject(rim);
 
-        for (let y = 0; y < 7; y += 1) {
-          for (let x = 0; x < 7; x += 1) {
+        for (let y = 0; y < mapSize; y += 1) {
+          for (let x = 0; x < mapSize; x += 1) {
             const code = layout[y][x];
             const spec = terrain[code];
             const pos = worldForTile(x, y);
@@ -794,7 +847,7 @@
             tile.castShadow = true;
             tile.receiveShadow = true;
             tile.userData = { x, y, code, baseColor: spec.color };
-            scene.add(tile);
+            addBoardObject(tile);
             tileMeshes.push(tile);
 
             if (code === "P") addPlainsDetail(pos, spec.height, x, y);
@@ -805,10 +858,11 @@
             const fog = new THREE.Mesh(new THREE.BoxGeometry(1.02, 0.06, 1.02), materials.fog);
             fog.position.set(pos.x, spec.height + 0.12, pos.z);
             fog.userData = { fogFor: key(x, y) };
-            scene.add(fog);
+            addBoardObject(fog);
             fogMeshes.set(key(x, y), fog);
           }
         }
+        scene.add(boardGroup);
       }
 
       function addPlainsDetail(pos, baseHeight, x, y) {
@@ -821,7 +875,7 @@
           tuft.position.set(pos.x + ox, baseHeight + 0.1, pos.z + oz);
           tuft.rotation.y = seed;
           tuft.castShadow = true;
-          scene.add(tuft);
+          addBoardObject(tuft);
         }
       }
 
@@ -835,12 +889,12 @@
           const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.22, 8), materials.trunk);
           trunk.position.set(pos.x + ox, baseHeight + 0.12, pos.z + oz);
           trunk.castShadow = true;
-          scene.add(trunk);
+          addBoardObject(trunk);
 
           const leaves = new THREE.Mesh(new THREE.ConeGeometry(0.16 + index * 0.02, 0.45, 9), materials.leaves);
           leaves.position.set(pos.x + ox, baseHeight + 0.42, pos.z + oz);
           leaves.castShadow = true;
-          scene.add(leaves);
+          addBoardObject(leaves);
         });
       }
 
@@ -860,7 +914,7 @@
           crag.rotation.set(-0.08 + index * 0.13, index * 0.72, 0.18 - index * 0.08);
           crag.castShadow = true;
           crag.receiveShadow = true;
-          scene.add(crag);
+          addBoardObject(crag);
 
           if (peakSpec.cap) {
             const cap = new THREE.Mesh(
@@ -871,7 +925,7 @@
             cap.position.set(pos.x + peakSpec.x, baseHeight + peakSpec.height * 0.93, pos.z + peakSpec.z);
             cap.rotation.copy(crag.rotation);
             cap.castShadow = true;
-            scene.add(cap);
+            addBoardObject(cap);
           }
         });
 
@@ -882,7 +936,7 @@
           boulder.position.set(pos.x + Math.cos(angle) * 0.34, baseHeight + 0.08, pos.z + Math.sin(angle) * 0.3);
           boulder.rotation.set(i * 0.3, angle, i * 0.2);
           boulder.castShadow = true;
-          scene.add(boulder);
+          addBoardObject(boulder);
         }
       }
 
@@ -910,13 +964,13 @@
         channel.position.set(pos.x, baseHeight + 0.096, pos.z);
         channel.castShadow = true;
         channel.receiveShadow = true;
-        scene.add(channel);
+        addBoardObject(channel);
 
         const stream = new THREE.Mesh(makeRiverStrip(0.28, 0.94), materials.river);
         stream.rotation.x = -Math.PI / 2;
         stream.rotation.z = rotation;
         stream.position.set(pos.x, baseHeight + 0.126, pos.z);
-        scene.add(stream);
+        addBoardObject(stream);
 
         [-0.18, 0.18].forEach((offset, index) => {
           const pebble = new THREE.Mesh(new THREE.DodecahedronGeometry(0.045, 0), materials.pebble);
@@ -926,7 +980,7 @@
           pebble.position.set(px, baseHeight + 0.145, pz);
           pebble.rotation.set(index * 0.3, along, 0.2);
           pebble.castShadow = true;
-          scene.add(pebble);
+          addBoardObject(pebble);
         });
 
         const foam = new THREE.Mesh(
@@ -936,7 +990,7 @@
         foam.rotation.x = -Math.PI / 2;
         foam.rotation.z = rotation + 0.08;
         foam.position.set(pos.x, baseHeight + 0.13, pos.z);
-        scene.add(foam);
+        addBoardObject(foam);
       }
 
       function createArmyPiece() {
@@ -1345,10 +1399,13 @@
       }
 
       function reset() {
+        layout = generateLayout();
+        createBoard();
         state = initialState();
         if (resultDialog.open) resultDialog.close();
         setOrder("move");
         armyGroup.position.copy(armyWorldPosition(state.position.x, state.position.y));
+        goalGroup.position.copy(pieceWorldPosition(state.goal.x, state.goal.y, 0.04));
         moveAnimation = null;
         updateSceneState();
         updateUI();
@@ -1360,7 +1417,7 @@
       armyGroup = createArmyPiece();
       scene.add(armyGroup);
       goalGroup = createStronghold();
-      goalGroup.position.copy(pieceWorldPosition(6, 0, 0.04));
+      goalGroup.position.copy(pieceWorldPosition(mapSize - 1, 0, 0.04));
       scene.add(goalGroup);
       updateCamera();
       resize();
